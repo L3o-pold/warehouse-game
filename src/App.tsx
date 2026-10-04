@@ -5,6 +5,11 @@ import { BuildGhost } from './render/BuildGhost';
 import { Entities } from './render/Entities';
 import { GroundInteraction } from './render/GroundInteraction';
 import { Scene } from './render/Scene';
+import { Inspector } from './ui/Inspector';
+import { KpiCards } from './ui/KpiCards';
+import { OpsPanel } from './ui/OpsPanel';
+import { ShipmentTimeline } from './ui/ShipmentTimeline';
+import { TopBar } from './ui/TopBar';
 
 export default function App() {
   const world = useGame((s) => s.world);
@@ -12,7 +17,6 @@ export default function App() {
   useEffect(() => {
     if (!useGame.getState().world) useGame.getState().startGame('scenario', 42);
   }, []);
-  const clock = useGame((s) => s.hud?.clock);
   return (
     <div className="relative h-full w-full">
       {world && (
@@ -22,7 +26,13 @@ export default function App() {
           <BuildGhost />
         </Scene>
       )}
-      <div className="pointer-events-none absolute left-4 top-4 rounded-xl bg-white/85 px-4 py-2 font-bold shadow">{clock}</div>
+      <div className="pointer-events-none absolute inset-0">
+        <TopBar />
+        <KpiCards />
+        <Inspector />
+        <OpsPanel />
+        <ShipmentTimeline />
+      </div>
     </div>
   );
 }
