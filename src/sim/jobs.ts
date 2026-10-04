@@ -1,5 +1,5 @@
 import { FULL_ALERT_EVERY_MIN, LOT_H, LOT_W } from './balance';
-import { cellOf, isForkliftWalkable, manhattan, walkableNeighbors } from './grid';
+import { cellOf, isConnected, isForkliftWalkable, manhattan, walkableNeighbors } from './grid';
 import { isFreeFloor, isFreeStaging, releaseJob, reservationKey } from './pallets';
 import { findPath } from './pathfinding';
 import { PRODUCTS } from './products';
@@ -75,9 +75,15 @@ function nearest<T>(items: T[], at: (t: T) => Vec2, ref: Vec2): T | null {
   return best;
 }
 
+const MAX_FLOOR_CHECKS = 12;
+/** Remembers "no floor space" for the current tick and grid, so a full warehouse doesn't rescan for every job. */
+const noFloor = { minute: -1, gridVersion: -1, reservations: -1, world: null as World | null };
+
 function stagingOrFloor(w: World, ref: Vec2): JobDest | null {
   const s = nearest(Object.values(w.staging).filter((c) => isFreeStaging(w, c)), (c) => c, ref);
   if (s) return { kind: 'staging', cell: { ...s } };
+  const resCount = Object.keys(w.reservations).length;
+  if (noFloor.world === w && noFloor.minute === w.minute && noFloor.gridVersion === w.gridVersion && noFloor.reservations === resCount) return null;
   const floor: Vec2[] = [];
   for (let y = 0; y < LOT_H; y++) {
     for (let x = 0; x < LOT_W; x++) {
@@ -85,7 +91,10 @@ function stagingOrFloor(w: World, ref: Vec2): JobDest | null {
       if (isFreeFloor(w, c) && walkableNeighbors(w, c).length > 0) floor.push(c);
     }
   }
-  const f = nearest(floor, (c) => c, ref);
+  // Nearest first, but only cells that keep every door, rack, staging cell and floor pallet reachable.
+  floor.sort((a, b) => manhattan(a, ref) - manhattan(b, ref));
+  const f = floor.slice(0, MAX_FLOOR_CHECKS).find((c) => isConnected(w, [c]));
+  if (!f) Object.assign(noFloor, { minute: w.minute, gridVersion: w.gridVersion, reservations: resCount, world: w });
   return f ? { kind: 'floor', cell: f } : null;
 }
 

@@ -196,6 +196,10 @@ export function isConnected(w: World, newRackCells: Vec2[] = []): boolean {
   const reachable = (c: Vec2) => ALL_DIRS.some((d) => seen.has(cellKey(add(c, DIRS[d]))));
   const allRackCells = [...Object.values(w.racks).flatMap((r) => r.cells), ...newRackCells];
   if (!allRackCells.every(reachable)) return false;
+  // Floor pallets must stay reachable too, or they can never be moved again.
+  for (let y = 0; y < LOT_H; y++) {
+    for (let x = 0; x < LOT_W; x++) if (w.grid[y * LOT_W + x] & F_FLOOR_PALLET && !reachable({ x, y })) return false;
+  }
   return Object.values(w.staging).every((c) => seen.has(cellKey(c)));
 }
 

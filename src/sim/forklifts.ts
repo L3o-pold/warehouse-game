@@ -1,6 +1,6 @@
 import { BLOCKED_MARKER_MIN, BLOCK_REPLAN_MIN, FAST_DRIVE, FAST_LIFT, FORKLIFT_SPEED, FRAGILE_FACTOR, HANDLE_MIN } from './balance';
 import type { CommandResult } from './commands';
-import { F_DOOR, cellOf, findSpawnCell, flagsAt, isForkliftWalkable, walkableNeighbors } from './grid';
+import { F_DOOR, cellOf, findSpawnCell, flagsAt, isConnected, isForkliftWalkable, isInterior, walkableNeighbors } from './grid';
 import { accessCells, assignJobTo, jobIdFor } from './jobs';
 import { attachPallet, detachPallet, isFreeFloor, isFreeStaging, releaseJob, reservationKey } from './pallets';
 import { findPath } from './pathfinding';
@@ -11,6 +11,8 @@ export type OrderTarget = { kind: 'truck'; truckId: string } | { kind: 'pallet';
 
 const walk = (w: World) => (x: number, y: number) => isForkliftWalkable(w, x, y);
 const same = (a: Vec2, b: Vec2) => a.x === b.x && a.y === b.y;
+const INWARD = { N: { x: 0, y: 1 }, S: { x: 0, y: -1 }, E: { x: -1, y: 0 }, W: { x: 1, y: 0 } } as const;
+const add1 = (c: Vec2, facing: keyof typeof INWARD): Vec2 => ({ x: c.x + INWARD[facing].x, y: c.y + INWARD[facing].y });
 
 export function activateParked(w: World): void {
   for (const f of Object.values(w.forklifts)) {
@@ -38,11 +40,30 @@ function nearestDropSpot(w: World, from: Vec2): PalletLoc | null {
       if (seen.has(k)) continue;
       seen.add(k);
       if (isFreeStaging(w, n)) return { kind: 'staging', cell: n };
-      if (isFreeFloor(w, n) && !w.cellPallets[k]) return { kind: 'floor', cell: n };
+      if (isFreeFloor(w, n) && !w.cellPallets[k] && isConnected(w, [n])) return { kind: 'floor', cell: n };
       if (isForkliftWalkable(w, n.x, n.y)) queue.push(n);
     }
   }
   return null;
+}
+
+/** Nowhere tidy to put a pallet: use the nearest interior non-door cell that is not a doorway's inward cell. */
+function lastResortSpot(w: World, from: Vec2): PalletLoc {
+  let best: Vec2 | null = null;
+  let bestD = Infinity;
+  for (let y = 0; y < 40; y++) {
+    for (let x = 0; x < 40; x++) {
+      const c = { x, y };
+      if (!isInterior(w, x, y) || !isForkliftWalkable(w, x, y) || w.cellPallets[cellKey(c)]) continue;
+      if (Object.values(w.doors).some((d) => same(add1(d.cell, d.facing), c))) continue;
+      const d = Math.abs(x - from.x) + Math.abs(y - from.y);
+      if (d > 0 && d < bestD) {
+        best = c;
+        bestD = d;
+      }
+    }
+  }
+  return { kind: 'floor', cell: best ?? from };
 }
 
 export function cancelJob(w: World, f: Forklift): void {
@@ -51,7 +72,7 @@ export function cancelJob(w: World, f: Forklift): void {
   if (f.carrying) {
     const p = w.pallets[f.carrying];
     if (p) {
-      const spot = nearestDropSpot(w, cellOf(f.pos)) ?? { kind: 'floor' as const, cell: cellOf(f.pos) };
+      const spot = nearestDropSpot(w, cellOf(f.pos)) ?? lastResortSpot(w, cellOf(f.pos));
       detachPallet(w, p);
       attachPallet(w, p, spot);
     }
@@ -102,12 +123,20 @@ function taskStillValid(w: World, f: Forklift): boolean {
 function replan(w: World, f: Forklift, occ: Map<string, string>, avoidOthers: boolean): boolean {
   const here = cellKey(cellOf(f.pos));
   const blocked = avoidOthers ? new Set([...occ.keys()].filter((k) => k !== here)) : undefined;
-  const p = findPath(cellOf(f.pos), f.goals, walk(w), blocked);
+  // Goals that became blocked (a dropped pallet) or are occupied would make findPath return a path it can never walk.
+  const goals = f.goals.filter((g) => (isForkliftWalkable(w, g.x, g.y) || cellKey(g) === here) && !blocked?.has(cellKey(g)));
+  const p = goals.length ? findPath(cellOf(f.pos), goals, walk(w), blocked) : null;
   if (p) {
     f.path = p;
     return true;
   }
   f.blockedUntil = w.minute + BLOCKED_MARKER_MIN;
+  if (f.carrying) {
+    // Hold on to the pallet and retry later rather than dumping it somewhere that may seal an aisle.
+    f.path = [];
+    f.waited = 0;
+    return false;
+  }
   if (f.jobId) cancelJob(w, f);
   else {
     f.path = [];
@@ -157,7 +186,16 @@ function giveWay(w: World, f: Forklift, other: Forklift, occ: Map<string, string
 }
 
 function stepMove(w: World, f: Forklift, occ: Map<string, string>): 'moving' | 'arrived' | 'blocked' {
-  if (!f.path.length) return 'arrived';
+  if (!f.path.length) {
+    const at = cellOf(f.pos);
+    if (!f.goals.length || f.goals.some((g) => same(g, at))) return 'arrived';
+    f.waited += 1;
+    if (f.waited >= BLOCK_REPLAN_MIN) {
+      f.waited = 0;
+      replan(w, f, occ, false);
+    }
+    return 'blocked';
+  }
   const next = f.path[0];
   const here = cellKey(cellOf(f.pos));
   const nk = cellKey(next);
