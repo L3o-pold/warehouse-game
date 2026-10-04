@@ -8,7 +8,7 @@ describe('pallets', () => {
     const w = readyWorld();
     const c = testContract(w);
     const loc = { kind: 'floor' as const, cell: { x: 12, y: 12 } };
-    const p = createPallet(w, 'boxes', c.id, loc);
+    const p = createPallet(w, 'starters', c.id, loc);
     attachPallet(w, p, loc);
     expect(isForkliftWalkable(w, 12, 12)).toBe(false);
     detachPallet(w, p);

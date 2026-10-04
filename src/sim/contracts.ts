@@ -12,7 +12,7 @@ import {
   dayOf, fmtMoney, genId, pushEvent, type ClientId, type Contract, type ContractType, type Pallet, type ProductId, type Truck, type Vec2, type World,
 } from './world';
 
-export const CLIENTS: ClientId[] = ['WareTrack', 'Nordline', 'Cargoviva', 'Bluepeak'];
+export const CLIENTS: ClientId[] = ['Critter Co.', 'Wizards of the West', "Dragon's Hoard Games", 'DeckBazaar'];
 const OK: CommandResult = { ok: true };
 const fail = (reason: string): CommandResult => ({ ok: false, reason });
 const between = (w: World, range: readonly [number, number]) => int(w.rng, range[0], range[1]);

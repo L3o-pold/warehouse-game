@@ -240,7 +240,7 @@ function RackCard({ id }: { id: string }) {
           <Icon name="trash" className="h-4 w-4" /> Demolish · refund {money(COST.rack / 2)}
         </Button>
       </div>
-      <Hint>Heavy goods (Spring Water) only go on the ground level.</Hint>
+      <Hint>Heavy goods (playmat rolls) only go on the ground level.</Hint>
     </>
   );
 }

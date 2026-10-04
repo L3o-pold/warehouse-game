@@ -8,7 +8,7 @@ import type { ContractType, ProductId, World } from './world';
 import { must, readyWorld, testContract } from './testUtils';
 
 function dockedTruck(w: World, kind: 'in' | 'out', opts: { product?: ProductId; n?: number; type?: ContractType; contractId?: string } = {}) {
-  const c = opts.contractId ? w.contracts[opts.contractId] : testContract(w, { product: opts.product ?? 'boxes', type: opts.type ?? 'storage' });
+  const c = opts.contractId ? w.contracts[opts.contractId] : testContract(w, { product: opts.product ?? 'starters', type: opts.type ?? 'storage' });
   const t = scheduleTruck(w, c, kind, w.minute, opts.n ?? 3);
   const door = Object.values(w.doors).find((d) => d.kind === kind)!;
   t.state = 'docked';
@@ -38,7 +38,7 @@ describe('jobs', () => {
     const w = readyWorld();
     must(applyCommand(w, { type: 'placeRack', cell: { x: 12, y: 9 }, orient: 'h' }));
     buyForklifts(w, 2);
-    dockedTruck(w, 'in', { product: 'water' });
+    dockedTruck(w, 'in', { product: 'playmats' });
     updateJobs(w);
     const dests = Object.values(w.jobs).map((j) => j.dest!);
     const rackSlots = dests.filter((d) => d.kind === 'rack').map((d) => (d.kind === 'rack' ? d.slot : -1));
@@ -78,11 +78,11 @@ describe('jobs', () => {
     const calm = testContract(w, { deadline: w.minute + 2000 });
     for (let x = 11; x <= 14; x++) for (const y of [7, 8]) {
       w.staging[`${x},${y}`] = { x, y };
-      const p = createPallet(w, 'boxes', rush.id, { kind: 'staging', cell: { x, y } });
+      const p = createPallet(w, 'starters', rush.id, { kind: 'staging', cell: { x, y } });
       attachPallet(w, p, p.loc);
     }
     w.staging['18,12'] = { x: 18, y: 12 };
-    const reachable = createPallet(w, 'boxes', calm.id, { kind: 'staging', cell: { x: 18, y: 12 } });
+    const reachable = createPallet(w, 'starters', calm.id, { kind: 'staging', cell: { x: 18, y: 12 } });
     attachPallet(w, reachable, reachable.loc);
     rebuildGrid(w);
     const f = w.forklifts['fl-1'];
@@ -118,10 +118,10 @@ describe('jobs', () => {
     const w = readyWorld();
     must(applyCommand(w, { type: 'placeRack', cell: { x: 18, y: 12 }, orient: 'h' }));
     const rackId = Object.keys(w.racks)[0];
-    const c = testContract(w, { product: 'boxes' });
+    const c = testContract(w, { product: 'starters' });
     for (const slot of [0, 1]) {
       const loc = { kind: 'rack' as const, rackId, slot };
-      attachPallet(w, createPallet(w, 'boxes', c.id, loc), loc);
+      attachPallet(w, createPallet(w, 'starters', c.id, loc), loc);
     }
     updateJobs(w);
     expect(Object.keys(w.jobs)).toHaveLength(0);
@@ -151,9 +151,9 @@ describe('jobs', () => {
     must(applyCommand(w, { type: 'placeStaging', cell: { x: 21, y: 13 } }));
     const near = testContract(w, { deadline: w.minute + 100 });
     const far = testContract(w, { deadline: w.minute + 900, rush: true });
-    const pNear = createPallet(w, 'boxes', near.id, { kind: 'staging', cell: { x: 11, y: 8 } });
+    const pNear = createPallet(w, 'starters', near.id, { kind: 'staging', cell: { x: 11, y: 8 } });
     attachPallet(w, pNear, pNear.loc);
-    const pFar = createPallet(w, 'boxes', far.id, { kind: 'staging', cell: { x: 21, y: 13 } });
+    const pFar = createPallet(w, 'starters', far.id, { kind: 'staging', cell: { x: 21, y: 13 } });
     attachPallet(w, pFar, pFar.loc);
     updateJobs(w);
     expect(w.jobs[`job-${pFar.id}`].forkliftId).toBe('fl-1');

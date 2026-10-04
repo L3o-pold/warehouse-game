@@ -49,17 +49,19 @@ This spec covers **sub-project 1 only**, a playable, fun demo.
 Daily running cost: **$15 per building cell per day**, charged at midnight together with wages.
 
 ### 2.4 Products
+The warehouse distributes trading-card-game (TCG) merchandise. All games and companies are fictional parodies.
+
 | Product | Value per pallet | Rule |
 |---|---|---|
-| Cardboard Boxes | $400 | none |
-| Spring Water 24-pack | $350 | **Heavy**: rack level 0 only |
-| LED Panel 60×60 | $2,200 | **Fragile**: handling time ×1.5 |
-| Safety Helmets | $900 | none |
-| Packing Tape | $300 | none |
-| Frozen Goods | n/a | **Locked in v1** (shown greyed out, "Cold zone: coming later") |
+| Shadow Realm Starter Decks | $400 | none |
+| Playmat Rolls | $350 | **Heavy**: rack level 0 only |
+| Arcane Duels Collector Boosters | $2,200 | **Fragile**: handling time ×1.5 |
+| Pocket Critters Booster Display | $900 | none |
+| WyrmGuard Sleeves & Deck Boxes | $300 | none |
+| Graded Card Slabs | n/a | **Locked in v1** (shown greyed out, "Secure vault: coming later") |
 
 ### 2.5 Contracts
-Generated daily at 06:00 by a seeded RNG: 3–5 offers, each expiring if not accepted within 12 in-game hours. Clients: WareTrack, Nordline, Cargoviva, Bluepeak.
+Generated daily at 06:00 by a seeded RNG: 3–5 offers, each expiring if not accepted within 12 in-game hours. Clients: Critter Co. (Pocket Critters publisher), Wizards of the West (Arcane Duels publisher), Dragon's Hoard Games (hobby-shop chain), DeckBazaar (online card marketplace). WareTrack remains the player's own company.
 
 - **Inbound storage:** N pallets of a product arrive on truck(s) at time T. You store them for D days and earn **rent per pallet per day** (paid at midnight) plus a receiving fee. At the end of D days an outbound truck collects them; it must leave within 6 in-game hours of arriving.
 - **Outbound:** ship N pallets of a product that's already stored (from your own storage contracts, which pay a transfer fee) by a deadline. Payout on departure; the truck must leave within 6 in-game hours of arriving.
@@ -207,4 +209,4 @@ src/
 - **Manual checks:** browser QA against the success criteria; the app boots without console errors.
 
 ## 7. Out of scope (v1)
-Empire map, multiple sites or buildings, save/load, audio, a full tutorial, the cold zone and Frozen Goods, staff beyond forklift wages, a loans market, multiplayer, mobile layout.
+Empire map, multiple sites or buildings, save/load, audio, a full tutorial, the secure vault and Graded Card Slabs, staff beyond forklift wages, a loans market, multiplayer, mobile layout.

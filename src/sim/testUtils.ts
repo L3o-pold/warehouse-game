@@ -30,7 +30,7 @@ export function readyWorld(seed = 1): World {
 export function testContract(w: World, over: Partial<Contract> = {}): Contract {
   const id = genId(w, 'ctr');
   const c: Contract = {
-    id, type: 'storage', client: 'Nordline', product: 'boxes', qty: 4, payout: 1000, rentPerDay: 40,
+    id, type: 'storage', client: 'Wizards of the West', product: 'starters', qty: 4, payout: 1000, rentPerDay: 40,
     arriveAt: w.minute, storeDays: 1, deadline: w.minute + 600, offerExpires: w.minute + 720, status: 'active',
     rush: false, hot: false, truckIds: [], shipped: 0, transferred: 0, completedAt: null, earned: 0, ...over,
   };

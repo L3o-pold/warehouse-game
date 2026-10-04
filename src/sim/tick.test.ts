@@ -16,7 +16,7 @@ describe('runMidnight', () => {
     const c = testContract(w, { rentPerDay: 40 });
     for (const x of [12, 13]) {
       const loc = { kind: 'staging' as const, cell: { x, y: 12 } };
-      attachPallet(w, createPallet(w, 'boxes', c.id, loc), loc);
+      attachPallet(w, createPallet(w, 'starters', c.id, loc), loc);
     }
     const cash = w.cash;
     runMidnight(w);

@@ -60,20 +60,20 @@ describe('acceptContract', () => {
     const w = readyWorld();
     must(applyCommand(w, { type: 'placeRack', cell: { x: 12, y: 9 }, orient: 'h' }));
     const rackId = Object.keys(w.racks)[0];
-    const s = testContract(w, { type: 'storage', product: 'boxes', qty: 4 });
+    const s = testContract(w, { type: 'storage', product: 'starters', qty: 4 });
     const pickup = scheduleTruck(w, s, 'out', w.minute + 2000, 4);
     for (let slot = 0; slot < 4; slot++) {
       const loc = { kind: 'rack' as const, rackId, slot };
-      attachPallet(w, createPallet(w, 'boxes', s.id, loc), loc);
+      attachPallet(w, createPallet(w, 'starters', s.id, loc), loc);
     }
-    expect(stockByProduct(w)).toEqual({ boxes: 4 });
-    const o = testContract(w, { type: 'outbound', status: 'offer', product: 'boxes', qty: 3 });
+    expect(stockByProduct(w)).toEqual({ starters: 4 });
+    const o = testContract(w, { type: 'outbound', status: 'offer', product: 'starters', qty: 3 });
     must(acceptContract(w, o.id));
     expect(Object.values(w.pallets).filter((p) => p.contractId === o.id)).toHaveLength(3);
     expect(pickup.capacity).toBe(1);
     expect(s.transferred).toBe(3);
     expect(o.truckIds.map((id) => w.trucks[id].capacity)).toEqual([3]);
-    const tooMany = testContract(w, { type: 'outbound', status: 'offer', product: 'boxes', qty: 5 });
+    const tooMany = testContract(w, { type: 'outbound', status: 'offer', product: 'starters', qty: 5 });
     expect(acceptContract(w, tooMany.id).ok).toBe(false);
   });
 });

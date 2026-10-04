@@ -11,12 +11,12 @@ export interface Product {
 }
 
 export const PRODUCTS: Record<ProductId, Product> = {
-  boxes: { id: 'boxes', name: 'Cardboard Boxes', value: 400, heavy: false, fragile: false, locked: false, color: '#D9A066' },
-  water: { id: 'water', name: 'Spring Water 24-pack', value: 350, heavy: true, fragile: false, locked: false, color: '#60A5FA' },
-  led: { id: 'led', name: 'LED Panel 60×60', value: 2200, heavy: false, fragile: true, locked: false, color: '#E2E8F0' },
-  helmets: { id: 'helmets', name: 'Safety Helmets', value: 900, heavy: false, fragile: false, locked: false, color: '#F59E0B' },
-  tape: { id: 'tape', name: 'Packing Tape', value: 300, heavy: false, fragile: false, locked: false, color: '#C08A4B' },
-  frozen: { id: 'frozen', name: 'Frozen Goods', value: 1200, heavy: false, fragile: false, locked: true, color: '#67E8F9' },
+  starters: { id: 'starters', name: 'Shadow Realm Starter Decks', value: 400, heavy: false, fragile: false, locked: false, color: '#DC2626' },
+  playmats: { id: 'playmats', name: 'Playmat Rolls', value: 350, heavy: true, fragile: false, locked: false, color: '#1F2937' },
+  collector: { id: 'collector', name: 'Arcane Duels Collector Boosters', value: 2200, heavy: false, fragile: true, locked: false, color: '#7C3AED' },
+  boosters: { id: 'boosters', name: 'Pocket Critters Booster Display', value: 900, heavy: false, fragile: false, locked: false, color: '#FACC15' },
+  sleeves: { id: 'sleeves', name: 'WyrmGuard Sleeves & Deck Boxes', value: 300, heavy: false, fragile: false, locked: false, color: '#14B8A6' },
+  slabs: { id: 'slabs', name: 'Graded Card Slabs', value: 5000, heavy: false, fragile: false, locked: true, color: '#E5E7EB' },
 };
 
 export const UNLOCKED_PRODUCTS: ProductId[] = (Object.keys(PRODUCTS) as ProductId[]).filter((p) => !PRODUCTS[p].locked);

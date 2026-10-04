@@ -4,9 +4,9 @@ import { COST, LOT_H, LOT_W, MAX_EVENTS, MIN_PER_DAY, START_CASH, START_MINUTE, 
 export type Vec2 = { x: number; y: number };
 export type Rect = { x: number; y: number; w: number; h: number };
 export type Dir = 'N' | 'S' | 'E' | 'W';
-export type ProductId = 'boxes' | 'water' | 'led' | 'helmets' | 'tape' | 'frozen';
+export type ProductId = 'starters' | 'playmats' | 'collector' | 'boosters' | 'sleeves' | 'slabs';
 export type ContractType = 'storage' | 'outbound' | 'crossdock';
-export type ClientId = 'WareTrack' | 'Nordline' | 'Cargoviva' | 'Bluepeak';
+export type ClientId = 'Critter Co.' | 'Wizards of the West' | "Dragon's Hoard Games" | 'DeckBazaar';
 export type Mode = 'scenario' | 'sandbox';
 export type DoorKind = 'in' | 'out';
 

@@ -76,10 +76,10 @@ export function TruckModel({ client }: { client: ClientId }) {
       <Block p={[4.25, 1.18, 0.53]} s={[0.45, 0.32, 0.02]} c={C.glass} cast={false} />
       <Block p={[4.25, 1.18, -0.53]} s={[0.45, 0.32, 0.02]} c={C.glass} cast={false} />
       <Label position={[1.8, 1.22, 0.54]} fontSize={0.4} color={look.stripe} anchorX="center" anchorY="middle">
-        {client}
+        {look.logo}
       </Label>
       <Label position={[1.8, 1.22, -0.54]} rotation={[0, Math.PI, 0]} fontSize={0.4} color={look.stripe} anchorX="center" anchorY="middle">
-        {client}
+        {look.logo}
       </Label>
       {[0.5, 1.05, 3.1, 4.3].map((x) => (
         <group key={x}>

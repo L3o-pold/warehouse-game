@@ -33,11 +33,12 @@ export const C = {
   outDoor: '#0D9488',
 } as const;
 
-export const CLIENT_LOOK: Record<ClientId, { cab: string; stripe: string }> = {
-  WareTrack: { cab: '#2563EB', stripe: '#2563EB' },
-  Nordline: { cab: '#F8FAFC', stripe: '#14B8A6' },
-  Cargoviva: { cab: '#F8FAFC', stripe: '#F97316' },
-  Bluepeak: { cab: '#F8FAFC', stripe: '#1E3A8A' },
+/** Truck livery per client; `logo` is the short name painted on the trailer sides. */
+export const CLIENT_LOOK: Record<ClientId, { cab: string; stripe: string; logo: string }> = {
+  'Critter Co.': { cab: '#FACC15', stripe: '#EAB308', logo: 'Critter Co.' },
+  'Wizards of the West': { cab: '#F8FAFC', stripe: '#7C3AED', logo: 'Wizards W.' },
+  "Dragon's Hoard Games": { cab: '#F8FAFC', stripe: '#DC2626', logo: "Dragon's Hoard" },
+  DeckBazaar: { cab: '#F8FAFC', stripe: '#0D9488', logo: 'DeckBazaar' },
 };
 
 const cache = new Map<string, THREE.MeshStandardMaterial>();

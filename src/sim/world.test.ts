@@ -46,10 +46,11 @@ describe('createWorld', () => {
 });
 
 describe('products', () => {
-  it('has the spec rules', () => {
-    expect(PRODUCTS.frozen.locked).toBe(true);
-    expect(PRODUCTS.water.heavy).toBe(true);
-    expect(PRODUCTS.led.fragile).toBe(true);
-    expect(UNLOCKED_PRODUCTS).not.toContain('frozen');
+  it('is a TCG catalogue with the handling rules', () => {
+    expect(PRODUCTS.slabs.locked).toBe(true);
+    expect(PRODUCTS.playmats.heavy).toBe(true);
+    expect(PRODUCTS.collector.fragile).toBe(true);
+    expect(UNLOCKED_PRODUCTS).toEqual(['starters', 'playmats', 'collector', 'boosters', 'sleeves']);
+    expect(PRODUCTS.boosters.name).toBe('Pocket Critters Booster Display');
   });
 });

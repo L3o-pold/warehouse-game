@@ -107,7 +107,7 @@ interface JobCtx {
 function makeCtx(w: World): JobCtx {
   const loadable = new Set<string>();
   for (const t of Object.values(w.trucks)) if (t.kind === 'out' && t.state === 'docked' && t.palletIds.length < t.capacity) loadable.add(t.contractId);
-  return { freeNormal: freeRackSlots(w, 'boxes').length > 0, freeHeavy: freeRackSlots(w, 'water').length > 0, loadable };
+  return { freeNormal: freeRackSlots(w, 'starters').length > 0, freeHeavy: freeRackSlots(w, 'playmats').length > 0, loadable };
 }
 
 export function desiredJobType(w: World, p: Pallet, ctx: JobCtx = makeCtx(w)): JobType | null {

@@ -65,7 +65,7 @@ describe('trucks', () => {
     runMinutes(w, 120, updateTrucks);
     expect(t.state).toBe('docked');
     for (let i = 0; i < 2; i++) {
-      const p = createPallet(w, 'boxes', c.id, { kind: 'truck', truckId: t.id });
+      const p = createPallet(w, 'starters', c.id, { kind: 'truck', truckId: t.id });
       attachPallet(w, p, { kind: 'truck', truckId: t.id });
     }
     runMinutes(w, 1, updateTrucks);

@@ -124,7 +124,7 @@ describe('forklifts', () => {
     b.pos = { x: 12, y: 12 };
     b.prev = { ...b.pos };
     const c = testContract(w);
-    const p = createPallet(w, 'boxes', c.id, { kind: 'forklift', forkliftId: a.id });
+    const p = createPallet(w, 'starters', c.id, { kind: 'forklift', forkliftId: a.id });
     attachPallet(w, p, p.loc);
     const jobId = `job-${p.id}`;
     w.jobs[jobId] = { id: jobId, type: 'UNLOAD', palletId: p.id, forkliftId: a.id, dest: { kind: 'floor', cell: { x: 12, y: 12 } }, manual: false };
