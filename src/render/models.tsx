@@ -1,10 +1,19 @@
 import { RoundedBox, Text } from '@react-three/drei';
-import type { Ref } from 'react';
+import { Suspense, type ComponentProps, type Ref } from 'react';
 import type * as THREE from 'three';
 import type { ClientId } from '../sim/world';
 import { C, CLIENT_LOOK, mat } from './palette';
 
 type V3 = [number, number, number];
+
+/** drei Text suspends while its font loads; isolate that so the scene and sim never wait on fonts. */
+export function Label(props: ComponentProps<typeof Text>) {
+  return (
+    <Suspense fallback={null}>
+      <Text {...props} />
+    </Suspense>
+  );
+}
 
 export function Block({ p, s, c, opacity, cast = true }: { p: V3; s: V3; c: string; opacity?: number; cast?: boolean }) {
   return (
@@ -66,12 +75,12 @@ export function TruckModel({ client }: { client: ClientId }) {
       <Block p={[4.66, 1.18, 0]} s={[0.06, 0.45, 0.88]} c={C.glass} cast={false} />
       <Block p={[4.25, 1.18, 0.53]} s={[0.45, 0.32, 0.02]} c={C.glass} cast={false} />
       <Block p={[4.25, 1.18, -0.53]} s={[0.45, 0.32, 0.02]} c={C.glass} cast={false} />
-      <Text position={[1.8, 1.22, 0.54]} fontSize={0.4} color={look.stripe} anchorX="center" anchorY="middle">
+      <Label position={[1.8, 1.22, 0.54]} fontSize={0.4} color={look.stripe} anchorX="center" anchorY="middle">
         {client}
-      </Text>
-      <Text position={[1.8, 1.22, -0.54]} rotation={[0, Math.PI, 0]} fontSize={0.4} color={look.stripe} anchorX="center" anchorY="middle">
+      </Label>
+      <Label position={[1.8, 1.22, -0.54]} rotation={[0, Math.PI, 0]} fontSize={0.4} color={look.stripe} anchorX="center" anchorY="middle">
         {client}
-      </Text>
+      </Label>
       {[0.5, 1.05, 3.1, 4.3].map((x) => (
         <group key={x}>
           <Wheel p={[x, 0.24, 0.46]} r={0.24} w={0.16} />
