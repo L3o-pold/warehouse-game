@@ -51,7 +51,11 @@ placement).
   circular arc, trying radii from largest to smallest, starting at
   `TRUCK_ARC_RADIUS` and halving (2 → 1 → 0.5 cells).
   Each arc is sampled (~every 0.2 cells); a sample is valid only if the cell
-  at the sample point and at ±0.55 cells perpendicular are truck-walkable.
+  at the sample point is truck-walkable (centerline check only). Rationale:
+  the truck body is ~1.05 cells wide (half-width 0.53 ≈ half a cell), and
+  straight segments are never laterally validated today — trucks already
+  overhang cell borders on roads. Requiring extra clearance on arcs only
+  would reject arcs near buildings while keeping identical straights.
   If no radius fits, the corner is kept sharp (current behaviour). Output is
   a dense list of fractional waypoints that `moveAlong` consumes unchanged.
 - Dock alignment helper: given a door, returns an approach point
@@ -77,7 +81,8 @@ placement).
 
 - `TRUCK_TURN_PENALTY = 2` (cost in cells of one 90° turn).
 - `TRUCK_ARC_RADIUS = 2` (max radius; fallbacks 1 then 0.5).
-- Arc sample step ~0.2; clearance half-width 0.55.
+- `TRUCK_APPROACH_DIST = 2` (cells out on the door axis where A* aims).
+- Arc sample step ~0.2; arc validity = centerline cell walkable.
 
 ## Data flow
 
