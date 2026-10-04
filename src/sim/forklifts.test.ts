@@ -4,6 +4,7 @@ import { failContract } from './contracts';
 import { activateParked, breakdown, updateForklifts } from './forklifts';
 import { rebuildGrid } from './grid';
 import { generateJobs, updateJobs } from './jobs';
+import { attachPallet, createPallet } from './pallets';
 import { scheduleTruck, updateTrucks } from './trucks';
 import { createWorld, type World } from './world';
 import { must, readyWorld, runMinutes, testContract } from './testUtils';
@@ -113,6 +114,27 @@ describe('forklifts', () => {
       if (!(a.pos.x === 14 && a.pos.y === 15)) aLeft = true;
     }
     expect(aLeft).toBe(true);
+  });
+  it('does not drop a floor pallet onto a forklift standing in the target cell', () => {
+    const w = readyWorld();
+    must(applyCommand(w, { type: 'buyForklift' }));
+    const [a, b] = Object.values(w.forklifts);
+    a.pos = { x: 12, y: 11 };
+    a.prev = { ...a.pos };
+    b.pos = { x: 12, y: 12 };
+    b.prev = { ...b.pos };
+    const c = testContract(w);
+    const p = createPallet(w, 'boxes', c.id, { kind: 'forklift', forkliftId: a.id });
+    attachPallet(w, p, p.loc);
+    const jobId = `job-${p.id}`;
+    w.jobs[jobId] = { id: jobId, type: 'UNLOAD', palletId: p.id, forkliftId: a.id, dest: { kind: 'floor', cell: { x: 12, y: 12 } }, manual: false };
+    w.reservations['c:12,12'] = jobId;
+    a.jobId = jobId;
+    a.goals = [{ x: 12, y: 11 }];
+    a.state = 'dropping';
+    a.timer = 0.5;
+    runMinutes(w, 30, updateForklifts);
+    expect(p.loc.kind === 'floor' && p.loc.cell.x === 12 && p.loc.cell.y === 12).toBe(false);
   });
   it('a manual pallet order takes over that pallet’s job', () => {
     const w = readyWorld();

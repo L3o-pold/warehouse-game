@@ -56,31 +56,32 @@ function moveAlong(t: Truck, speed: number): boolean {
 }
 
 function tryAssignDoor(w: World, t: Truck): boolean {
-  let door = t.doorId ? w.doors[t.doorId] : undefined;
-  if (!door || door.kind !== t.kind || (door.truckId && door.truckId !== t.id)) {
-    door = Object.values(w.doors)
-      .filter((d) => d.kind === t.kind && !d.truckId)
-      .sort((a, b) => a.label.localeCompare(b.label))[0];
-  }
-  if (!door) {
+  const preferred = t.doorId ? w.doors[t.doorId] : undefined;
+  const usable = (d: Door) => d.kind === t.kind && (!d.truckId || d.truckId === t.id);
+  const candidates = Object.values(w.doors)
+    .filter((d) => usable(d) && d !== preferred)
+    .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+  if (preferred && usable(preferred)) candidates.unshift(preferred);
+  if (!candidates.length) {
     t.doorId = null;
     return false;
   }
-  const path = findPath(cellOf(t.pos), [stagePoint(door)], truckWalk(w));
-  if (!path) {
-    // While queued, t.timer counts down to the next "unreachable" alert.
-    if (t.timer <= 0) {
-      pushEvent(w, 'alert', `${t.id} can’t reach ${door.label} — keep the yard open`, { at: door.cell });
-      t.timer = UNREACHABLE_ALERT_EVERY;
-    } else t.timer -= 1;
-    return false;
+  for (const door of candidates) {
+    const path = findPath(cellOf(t.pos), [stagePoint(door)], truckWalk(w));
+    if (!path) continue;
+    door.truckId = t.id;
+    t.doorId = door.id;
+    t.path = path;
+    t.state = 'driving';
+    t.timer = 0;
+    return true;
   }
-  door.truckId = t.id;
-  t.doorId = door.id;
-  t.path = path;
-  t.state = 'driving';
-  t.timer = 0;
-  return true;
+  // While queued, t.timer counts down to the next "unreachable" alert.
+  if (t.timer <= 0) {
+    pushEvent(w, 'alert', `${t.id} can’t reach any ${t.kind === 'in' ? 'inbound' : 'outbound'} door — keep the yard open`, { at: candidates[0].cell });
+    t.timer = UNREACHABLE_ALERT_EVERY;
+  } else t.timer -= 1;
+  return false;
 }
 
 export function startDeparture(w: World, t: Truck): void {

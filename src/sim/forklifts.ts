@@ -1,7 +1,7 @@
 import { BLOCKED_MARKER_MIN, BLOCK_REPLAN_MIN, FAST_DRIVE, FAST_LIFT, FORKLIFT_SPEED, FRAGILE_FACTOR, HANDLE_MIN } from './balance';
 import type { CommandResult } from './commands';
 import { F_DOOR, cellOf, findSpawnCell, flagsAt, isConnected, isForkliftWalkable, isInterior, walkableNeighbors } from './grid';
-import { accessCells, assignJobTo, jobIdFor } from './jobs';
+import { accessCells, assignJobTo, chooseDest, jobIdFor } from './jobs';
 import { attachPallet, detachPallet, isFreeFloor, isFreeStaging, releaseJob, reservationKey } from './pallets';
 import { findPath } from './pathfinding';
 import { PRODUCTS } from './products';
@@ -264,6 +264,11 @@ function pickUp(w: World, f: Forklift): void {
   f.state = 'toDrop';
 }
 
+function cellTaken(w: World, c: Vec2, self: Forklift): boolean {
+  if (w.cellPallets[cellKey(c)]) return true;
+  return Object.values(w.forklifts).some((o) => o !== self && o.state !== 'parked' && same(cellOf(o.pos), c));
+}
+
 function dropOff(w: World, f: Forklift): void {
   const job = f.jobId ? w.jobs[f.jobId] : undefined;
   const p = job ? w.pallets[job.palletId] : undefined;
@@ -272,6 +277,26 @@ function dropOff(w: World, f: Forklift): void {
     return;
   }
   const d = job.dest;
+  if ((d.kind === 'floor' || d.kind === 'staging') && cellTaken(w, d.cell, f)) {
+    // The reserved cell got occupied since it was chosen: pick another spot rather than stacking on it.
+    const k = reservationKey(d);
+    if (k) delete w.reservations[k];
+    job.dest = null;
+    const next = chooseDest(w, job, p);
+    if (!next) {
+      job.dest = d;
+      if (k) w.reservations[k] = job.id;
+      f.timer = 1;
+      return;
+    }
+    job.dest = next;
+    const k2 = reservationKey(next);
+    if (k2) w.reservations[k2] = job.id;
+    f.goals = accessCells(w, next);
+    f.path = findPath(cellOf(f.pos), f.goals, walk(w)) ?? [];
+    f.state = 'toDrop';
+    return;
+  }
   detachPallet(w, p);
   let loc: PalletLoc;
   if (d.kind === 'truck') loc = { kind: 'truck', truckId: d.truckId };

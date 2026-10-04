@@ -47,6 +47,17 @@ describe('trucks', () => {
     expect(t.state).toBe('queued');
     expect(w.events.some((e) => e.kind === 'alert' && e.text.includes('can’t reach'))).toBe(true);
   });
+  it('tries the next free door when the first one cannot be reached', () => {
+    const w = readyWorld();
+    must(applyCommand(w, { type: 'placeDoor', cell: { x: 17, y: 15 }, kind: 'in' }));
+    // Seal off In 1's staging point (14,19) by marking its neighbours as building.
+    for (const [x, y] of [[13, 19], [15, 19], [14, 20], [14, 18]]) w.grid[y * 40 + x] |= 1;
+    const c = testContract(w);
+    const t = scheduleTruck(w, c, 'in', w.minute + 1, 1);
+    runMinutes(w, 120, updateTrucks);
+    expect(w.doors[t.doorId!].label).toBe('In 2');
+    expect(t.state).toBe('docked');
+  });
   it('outbound truck departs once full and counts shipped pallets', () => {
     const w = readyWorld();
     const c = testContract(w, { type: 'crossdock', qty: 2 });
