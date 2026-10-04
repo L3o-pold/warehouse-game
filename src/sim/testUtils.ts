@@ -1,7 +1,7 @@
 import { BUILD_MINUTES } from './balance';
 import { applyCommand, type CommandResult } from './commands';
 import { findSpawnCell, rebuildGrid } from './grid';
-import { createWorld, type World } from './world';
+import { createWorld, genId, type Contract, type World } from './world';
 
 export function must(r: CommandResult): void {
   if (!r.ok) throw new Error(r.reason);
@@ -25,4 +25,22 @@ export function readyWorld(seed = 1): World {
   must(applyCommand(w, { type: 'placeDoor', cell: { x: 14, y: 15 }, kind: 'in' }));
   must(applyCommand(w, { type: 'placeDoor', cell: { x: 20, y: 15 }, kind: 'out' }));
   return w;
+}
+
+export function testContract(w: World, over: Partial<Contract> = {}): Contract {
+  const id = genId(w, 'ctr');
+  const c: Contract = {
+    id, type: 'storage', client: 'Nordline', product: 'boxes', qty: 4, payout: 1000, rentPerDay: 40,
+    arriveAt: w.minute, storeDays: 1, deadline: w.minute + 600, offerExpires: w.minute + 720, status: 'active',
+    rush: false, hot: false, truckIds: [], shipped: 0, transferred: 0, completedAt: null, earned: 0, ...over,
+  };
+  w.contracts[id] = c;
+  return c;
+}
+
+export function runMinutes(w: World, n: number, ...updaters: ((w: World) => void)[]): void {
+  for (let i = 0; i < n; i++) {
+    w.minute++;
+    for (const u of updaters) u(w);
+  }
 }

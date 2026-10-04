@@ -3,6 +3,7 @@ import { refund, spend } from './economy';
 import {
   findSpawnCell, rackCells, rebuildGrid, validateDemolish, validateDoor, validateFootprint, validateRack, validateStaging,
 } from './grid';
+import { reassignTruck } from './trucks';
 import { cellKey, fmtMoney, genId, newForklift, pushEvent, type DoorKind, type Rect, type Vec2, type World } from './world';
 
 export type Command =
@@ -14,7 +15,8 @@ export type Command =
   | { type: 'buyForklift' }
   | { type: 'upgradeForklift'; forkliftId: string }
   | { type: 'repairForklift'; forkliftId: string }
-  | { type: 'demolish'; cell: Vec2 };
+  | { type: 'demolish'; cell: Vec2 }
+  | { type: 'reassignTruck'; truckId: string; doorId: string };
 
 export type CommandResult = { ok: true } | { ok: false; reason: string };
 
@@ -121,5 +123,7 @@ function run(w: World, cmd: Command): CommandResult {
       rebuildGrid(w);
       return OK;
     }
+    case 'reassignTruck':
+      return reassignTruck(w, cmd.truckId, cmd.doorId);
   }
 }
