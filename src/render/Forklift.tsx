@@ -6,10 +6,11 @@ import { loop } from '../game/loop';
 import { useGame } from '../game/store';
 import { entityHandlers } from '../input/selection';
 import { handlingTarget } from '../sim/forklifts';
+import { F_DOCK, flagsAt } from '../sim/grid';
 import type { Forklift as ForkliftT, World } from '../sim/world';
 import { interp, lerpAngle, renderState } from './anim';
 import { ForkliftModel } from './models';
-import { C } from './palette';
+import { C, DOCK_H } from './palette';
 import { Label } from './models';
 import { SelectionRing } from './SelectionRing';
 
@@ -34,7 +35,10 @@ export function Forklift({ id }: { id: string }) {
     const p = interp(f.prev, f.pos, loop.alpha);
     rs.heading = lerpAngle(rs.heading, f.heading, 1 - Math.exp(-dt * 14));
     rs.forkY += (forkHeight(w, f) - rs.forkY) * (1 - Math.exp(-dt * 10));
-    group.current.position.set(p.x, 0, p.y);
+    // Drive up onto the loading dock when on a dock cell.
+    const onDock = flagsAt(w, Math.round(p.x), Math.round(p.y)) & F_DOCK;
+    rs.y += ((onDock ? DOCK_H : 0) - rs.y) * (1 - Math.exp(-dt * 12));
+    group.current.position.set(p.x, rs.y, p.y);
     group.current.rotation.y = -rs.heading;
     forks.current.position.y = rs.forkY;
     warn.current.visible = f.state === 'broken' || f.blockedUntil > w.minute;

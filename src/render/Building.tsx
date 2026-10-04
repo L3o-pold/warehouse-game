@@ -5,10 +5,10 @@ import * as THREE from 'three';
 import { loop } from '../game/loop';
 import { useGame } from '../game/store';
 import { BUILD_MINUTES, LOT_H, LOT_W } from '../sim/balance';
-import { F_DOOR, F_WALL, flagsAt } from '../sim/grid';
+import { F_DOCK, F_DOOR, F_WALL, flagsAt } from '../sim/grid';
 import type { BuildingPart, Rect, Vec2 } from '../sim/world';
 import { Block, Label } from './models';
-import { C, mat } from './palette';
+import { C, DOCK_H, mat } from './palette';
 
 const MAX_WALLS = 500;
 
@@ -43,6 +43,24 @@ function WallInstances({ cells, height }: { cells: Vec2[]; height: number }) {
         <boxGeometry args={[1, 0.1, 1]} />
       </instancedMesh>
     </>
+  );
+}
+
+function DockPlatform({ cells }: { cells: Vec2[] }) {
+  const top = useRef<THREE.InstancedMesh>(null!);
+  useLayoutEffect(() => {
+    const m = new THREE.Matrix4();
+    cells.forEach((c, i) => {
+      m.makeScale(1, 1, 1).setPosition(c.x, DOCK_H / 2, c.y);
+      top.current.setMatrixAt(i, m);
+    });
+    top.current.count = cells.length;
+    top.current.instanceMatrix.needsUpdate = true;
+  }, [cells]);
+  return (
+    <instancedMesh ref={top} args={[undefined, undefined, MAX_WALLS]} castShadow receiveShadow frustumCulled={false} material={mat(C.dock)}>
+      <boxGeometry args={[1, DOCK_H, 1]} />
+    </instancedMesh>
   );
 }
 
@@ -107,22 +125,25 @@ export function Building() {
   const gridVersion = useGame((s) => s.hud?.gridVersion ?? 0);
   const low = useGame((s) => s.roofCut || s.tool !== null);
   const world = useGame((s) => s.world);
-  const { walls, parts, minute } = useMemo(() => {
+  const { walls, docks, parts, minute } = useMemo(() => {
     const walls: Vec2[] = [];
-    if (!world) return { walls, parts: [] as BuildingPart[], minute: 0 };
+    const docks: Vec2[] = [];
+    if (!world) return { walls, docks, parts: [] as BuildingPart[], minute: 0 };
     for (let y = 0; y < LOT_H; y++) {
       for (let x = 0; x < LOT_W; x++) {
         const f = flagsAt(world, x, y);
         if (f & F_WALL && !(f & F_DOOR)) walls.push({ x, y });
+        if (f & F_DOCK) docks.push({ x, y });
       }
     }
-    return { walls, parts: world.parts.map((p) => ({ rect: { ...p.rect }, readyAt: p.readyAt })), minute: world.minute };
+    return { walls, docks, parts: world.parts.map((p) => ({ rect: { ...p.rect }, readyAt: p.readyAt })), minute: world.minute };
     // gridVersion changes whenever structures or readiness change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [world, gridVersion]);
   return (
     <group>
       <WallInstances cells={walls} height={low ? 0.9 : 3} />
+      <DockPlatform cells={docks} />
       {parts.map((p, i) => (p.readyAt <= minute ? <ReadyPart key={i} rect={p.rect} roof={!low} /> : <Scaffold key={i} part={p} />))}
     </group>
   );

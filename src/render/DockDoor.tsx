@@ -6,7 +6,8 @@ import { useGame } from '../game/store';
 import { entityHandlers } from '../input/selection';
 import { dirAngle } from '../sim/world';
 import { Block, Label } from './models';
-import { C, mat } from './palette';
+import { C, DOCK_H, mat } from './palette';
+import { DOCK_DEPTH, DOOR_APRON } from '../sim/balance';
 import { SelectionRing } from './SelectionRing';
 
 export function DockDoor({ id }: { id: string }) {
@@ -30,12 +31,13 @@ export function DockDoor({ id }: { id: string }) {
   if (!door || !meta) return null;
   const [label, kind] = meta.split('|');
   const h = low ? 0.9 : 3;
-  const apron: [number, number, number][] = [
-    [1, 0.02, -0.7],
-    [8.5, 0.02, -0.7],
-    [8.5, 0.02, 0.7],
-    [1, 0.02, 0.7],
-    [1, 0.02, -0.7],
+  // Truck bay outline beyond the dock (the dock's outer edge is at x = DOCK_DEPTH + 0.5 in door space).
+  const edge = DOCK_DEPTH + 0.5;
+  const bay: [number, number, number][] = [
+    [edge + 0.1, 0.02, -0.7],
+    [edge + DOOR_APRON, 0.02, -0.7],
+    [edge + DOOR_APRON, 0.02, 0.7],
+    [edge + 0.1, 0.02, 0.7],
   ];
   return (
     <group position={[door.cell.x, 0, door.cell.y]} rotation-y={-dirAngle(door.facing)} {...entityHandlers({ kind: 'door', id })}>
@@ -51,10 +53,14 @@ export function DockDoor({ id }: { id: string }) {
           <mesh ref={shutter} position={[0.4, 1.1, 0]} castShadow material={mat(C.shutter)}>
             <boxGeometry args={[0.05, 2.2, 0.8]} />
           </mesh>
-          <Block p={[0.62, 0.35, 0]} s={[0.25, 0.15, 0.9]} c={C.navy} />
         </>
       )}
-      <Line points={apron} color={C.bay} lineWidth={2} />
+      {/* Yellow safety edge along the dock lip, black bumpers either side of the truck. */}
+      <Block p={[edge - 0.04, DOCK_H + 0.01, 0]} s={[0.08, 0.02, 3]} c={C.bay} cast={false} />
+      <Block p={[edge + 0.04, DOCK_H / 2, 0]} s={[0.02, DOCK_H, 3]} c={C.bay} cast={false} />
+      <Block p={[edge + 0.08, DOCK_H * 0.55, 0.62]} s={[0.12, 0.22, 0.18]} c={C.black} />
+      <Block p={[edge + 0.08, DOCK_H * 0.55, -0.62]} s={[0.12, 0.22, 0.18]} c={C.black} />
+      <Line points={bay} color={C.bay} lineWidth={2} />
       <Billboard position={[1.4, h + 0.7, 0]}>
         <Label fontSize={0.5} color={kind === 'in' ? C.blue : C.outDoor} outlineWidth={0.05} outlineColor="#ffffff">
           {label}

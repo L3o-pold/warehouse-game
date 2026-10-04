@@ -7,7 +7,34 @@ import { entityHandlers } from '../input/selection';
 import { PRODUCTS } from '../sim/products';
 import type { Pallet, World } from '../sim/world';
 import { interp, popScale, renderState } from './anim';
-import { C, mat } from './palette';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import type { ProductId } from '../sim/world';
+import { C } from './palette';
+
+/** Premium goods ship on blue plastic pallets, the rest on wood. */
+const PALLET_COLOR: Record<ProductId, string> = {
+  starters: C.wood, playmats: C.wood, sleeves: C.wood, boosters: C.palletBlue, collector: C.palletBlue, slabs: C.palletBlue,
+};
+
+const box = (w: number, h: number, d: number, x: number, y: number, z: number) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+
+/** Pallet base 0.9 × 0.14 × 0.9, origin at its bottom centre: bottom boards, three bearers, five top slats. */
+function palletGeometry(): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (const z of [-0.37, 0, 0.37]) parts.push(box(0.9, 0.025, 0.14, 0, 0.0125, z));
+  for (const z of [-0.37, 0, 0.37]) parts.push(box(0.9, 0.085, 0.1, 0, 0.0675, z));
+  for (const x of [-0.38, -0.19, 0, 0.19, 0.38]) parts.push(box(0.14, 0.03, 0.9, x, 0.125, 0));
+  return mergeGeometries(parts)!;
+}
+
+/** Load: two layers of 2 × 2 cartons with small gaps, origin at the bottom centre. */
+function cartonGeometry(): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (const layer of [0, 1]) {
+    for (const x of [-0.205, 0.205]) for (const z of [-0.205, 0.205]) parts.push(box(0.39, 0.33, 0.39, x, 0.165 + layer * 0.345, z));
+  }
+  return mergeGeometries(parts)!;
+}
 
 const MAX = 1500;
 
@@ -28,7 +55,7 @@ function palletPose(w: World, p: Pallet): { x: number; y: number; z: number; rot
       if (!f) return null;
       const rs = renderState(f.id);
       const pos = interp(f.prev, f.pos, loop.alpha);
-      return { x: pos.x + Math.cos(rs.heading) * 0.85, y: rs.forkY + 0.04, z: pos.y + Math.sin(rs.heading) * 0.85, rot: -rs.heading };
+      return { x: pos.x + Math.cos(rs.heading) * 0.85, y: rs.y + rs.forkY + 0.04, z: pos.y + Math.sin(rs.heading) * 0.85, rot: -rs.heading };
     }
     case 'truck':
       return null;
@@ -39,13 +66,17 @@ export function PalletInstances() {
   const base = useRef<THREE.InstancedMesh>(null!);
   const load = useRef<THREE.InstancedMesh>(null!);
   const ids = useRef<string[]>([]);
+  const geo = useMemo(() => ({ pallet: palletGeometry(), cartons: cartonGeometry() }), []);
   const tmp = useMemo(
     () => ({ m: new THREE.Matrix4(), q: new THREE.Quaternion(), s: new THREE.Vector3(), p: new THREE.Vector3(), e: new THREE.Euler(), c: new THREE.Color() }),
     [],
   );
   useLayoutEffect(() => {
     const white = new THREE.Color('#ffffff');
-    for (let i = 0; i < MAX; i++) load.current.setColorAt(i, white);
+    for (let i = 0; i < MAX; i++) {
+      load.current.setColorAt(i, white);
+      base.current.setColorAt(i, white);
+    }
     base.current.count = 0;
     load.current.count = 0;
   }, []);
@@ -60,11 +91,12 @@ export function PalletInstances() {
       const pop = popScale(w.minute + loop.alpha - p.placedAt);
       tmp.e.set(0, pose.rot, 0);
       tmp.q.setFromEuler(tmp.e);
-      tmp.p.set(pose.x, pose.y + 0.06, pose.z);
+      tmp.p.set(pose.x, pose.y, pose.z);
       tmp.s.set(pop, 1, pop);
       tmp.m.compose(tmp.p, tmp.q, tmp.s);
       base.current.setMatrixAt(i, tmp.m);
-      tmp.p.set(pose.x, pose.y + 0.12 + 0.36 * pop, pose.z);
+      base.current.setColorAt(i, tmp.c.set(PALLET_COLOR[p.product]));
+      tmp.p.set(pose.x, pose.y + 0.14, pose.z);
       tmp.s.set(pop, pop, pop);
       tmp.m.compose(tmp.p, tmp.q, tmp.s);
       load.current.setMatrixAt(i, tmp.m);
@@ -77,6 +109,7 @@ export function PalletInstances() {
     base.current.instanceMatrix.needsUpdate = true;
     load.current.instanceMatrix.needsUpdate = true;
     if (load.current.instanceColor) load.current.instanceColor.needsUpdate = true;
+    if (base.current.instanceColor) base.current.instanceColor.needsUpdate = true;
   });
   const handlers = entityHandlers((e: ThreeEvent<PointerEvent>) => {
     const id = e.instanceId !== undefined ? ids.current[e.instanceId] : undefined;
@@ -84,11 +117,10 @@ export function PalletInstances() {
   });
   return (
     <>
-      <instancedMesh ref={base} args={[undefined, undefined, MAX]} castShadow receiveShadow frustumCulled={false} material={mat(C.wood)} {...handlers}>
-        <boxGeometry args={[0.9, 0.12, 0.9]} />
+      <instancedMesh ref={base} args={[geo.pallet, undefined, MAX]} castShadow receiveShadow frustumCulled={false} {...handlers}>
+        <meshStandardMaterial roughness={0.9} />
       </instancedMesh>
-      <instancedMesh ref={load} args={[undefined, undefined, MAX]} castShadow frustumCulled={false} {...handlers}>
-        <boxGeometry args={[0.82, 0.72, 0.82]} />
+      <instancedMesh ref={load} args={[geo.cartons, undefined, MAX]} castShadow frustumCulled={false} {...handlers}>
         <meshStandardMaterial roughness={0.85} />
       </instancedMesh>
     </>

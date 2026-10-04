@@ -41,11 +41,22 @@ export function ForkliftModel({ forksRef }: { forksRef: Ref<THREE.Group> }) {
         <Block key={i} p={[x, 1.0, z]} s={[0.05, 0.8, 0.05]} c={C.navy} />
       ))}
       <Block p={[-0.1, 1.42, 0]} s={[0.72, 0.05, 0.66]} c={C.navy} />
-      <mesh position={[-0.15, 0.86, 0]} castShadow material={mat(C.blue)}>
-        <capsuleGeometry args={[0.14, 0.22, 4, 8]} />
+      {/* Driver: navy trousers, orange hi-vis vest with a reflective band, yellow hard hat. */}
+      <Block p={[-0.12, 0.66, 0]} s={[0.3, 0.12, 0.3]} c={C.navy} />
+      <mesh position={[-0.17, 0.88, 0]} castShadow material={mat(C.vest)}>
+        <capsuleGeometry args={[0.15, 0.2, 4, 10]} />
       </mesh>
-      <mesh position={[-0.15, 1.2, 0]} castShadow material={mat(C.skin)}>
-        <sphereGeometry args={[0.11, 12, 10]} />
+      <mesh position={[-0.17, 0.9, 0]} material={mat(C.hiVis)}>
+        <cylinderGeometry args={[0.158, 0.158, 0.05, 14]} />
+      </mesh>
+      <mesh position={[-0.17, 1.17, 0]} castShadow material={mat(C.skin)}>
+        <sphereGeometry args={[0.12, 14, 12]} />
+      </mesh>
+      <mesh position={[-0.17, 1.22, 0]} castShadow material={mat(C.helmet)}>
+        <sphereGeometry args={[0.135, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+      </mesh>
+      <mesh position={[-0.12, 1.22, 0]} material={mat(C.helmet)}>
+        <cylinderGeometry args={[0.16, 0.16, 0.02, 16]} />
       </mesh>
       <Block p={[0.42, 0.95, 0.22]} s={[0.07, 1.7, 0.07]} c={C.navy} />
       <Block p={[0.42, 0.95, -0.22]} s={[0.07, 1.7, 0.07]} c={C.navy} />

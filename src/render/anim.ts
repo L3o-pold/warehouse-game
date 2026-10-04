@@ -9,12 +9,12 @@ export function lerpAngle(a: number, b: number, t: number): number {
 
 export const interp = (prev: Vec2, pos: Vec2, alpha: number): Vec2 => ({ x: lerp(prev.x, pos.x, alpha), y: lerp(prev.y, pos.y, alpha) });
 
-const states = new Map<string, { heading: number; forkY: number }>();
+const states = new Map<string, { heading: number; forkY: number; y: number }>();
 /** Smoothed per-entity render values shared between Forklift and PalletInstances. */
-export function renderState(id: string): { heading: number; forkY: number } {
+export function renderState(id: string): { heading: number; forkY: number; y: number } {
   let s = states.get(id);
   if (!s) {
-    s = { heading: 0, forkY: 0.06 };
+    s = { heading: 0, forkY: 0.06, y: 0 };
     states.set(id, s);
   }
   return s;

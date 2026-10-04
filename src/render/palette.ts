@@ -31,7 +31,17 @@ export const C = {
   ok: '#16A34A',
   bad: '#EF4444',
   outDoor: '#0D9488',
+  dock: '#D3DBE6',
+  dockSide: '#C7D0DC',
+  vest: '#F97316',
+  hiVis: '#FDE047',
+  helmet: '#FACC15',
+  palletBlue: '#2563EB',
+  black: '#111827',
 } as const;
+
+/** Height of the loading-dock platform; trucks' cargo floors sit at the same level. */
+export const DOCK_H = 0.4;
 
 /** Truck livery per client; `logo` is the short name painted on the trailer sides. */
 export const CLIENT_LOOK: Record<ClientId, { cab: string; stripe: string; logo: string }> = {
