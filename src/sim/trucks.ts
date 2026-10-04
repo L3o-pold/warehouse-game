@@ -1,4 +1,4 @@
-import { DOCK_MIN, DOCK_OFFSET, LOT_H, LOT_W, TRUCK_SPEED, TRUCK_STAGE_DIST } from './balance';
+import { DOCK_DEPTH, DOCK_MIN, DOCK_OFFSET, LOT_H, LOT_W, TRUCK_SPEED, TRUCK_STAGE_DIST } from './balance';
 import type { CommandResult } from './commands';
 import { cellOf, isTruckWalkable } from './grid';
 import { createPallet } from './pallets';
@@ -10,13 +10,14 @@ export const ROAD_EXIT: Vec2 = { x: LOT_W - 1, y: LOT_H };
 const QUEUE_ROW = LOT_H + 1;
 const UNREACHABLE_ALERT_EVERY = 60;
 
+/** Trucks back up to the outer edge of the dock, not to the wall. */
 export const stagePoint = (d: Door): Vec2 => ({
-  x: d.cell.x + DIRS[d.facing].x * TRUCK_STAGE_DIST,
-  y: d.cell.y + DIRS[d.facing].y * TRUCK_STAGE_DIST,
+  x: d.cell.x + DIRS[d.facing].x * (DOCK_DEPTH + TRUCK_STAGE_DIST),
+  y: d.cell.y + DIRS[d.facing].y * (DOCK_DEPTH + TRUCK_STAGE_DIST),
 });
 export const dockPoint = (d: Door): Vec2 => ({
-  x: d.cell.x + DIRS[d.facing].x * DOCK_OFFSET,
-  y: d.cell.y + DIRS[d.facing].y * DOCK_OFFSET,
+  x: d.cell.x + DIRS[d.facing].x * (DOCK_DEPTH + DOCK_OFFSET),
+  y: d.cell.y + DIRS[d.facing].y * (DOCK_DEPTH + DOCK_OFFSET),
 });
 const truckWalk = (w: World) => (x: number, y: number) => isTruckWalkable(w, x, y);
 

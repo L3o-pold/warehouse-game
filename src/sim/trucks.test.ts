@@ -18,7 +18,7 @@ describe('trucks', () => {
     expect(t.doorId).toBe(inDoor(w).id);
     expect(inDoor(w).truckId).toBe(t.id);
     expect(t.pos.x).toBeCloseTo(14);
-    expect(t.pos.y).toBeCloseTo(15.6);
+    expect(t.pos.y).toBeCloseTo(17.6);
   });
   it('leaves and is removed once an inbound truck is empty', () => {
     const w = readyWorld();
@@ -50,8 +50,8 @@ describe('trucks', () => {
   it('tries the next free door when the first one cannot be reached', () => {
     const w = readyWorld();
     must(applyCommand(w, { type: 'placeDoor', cell: { x: 17, y: 15 }, kind: 'in' }));
-    // Seal off In 1's staging point (14,19) by marking its neighbours as building.
-    for (const [x, y] of [[13, 19], [15, 19], [14, 20], [14, 18]]) w.grid[y * 40 + x] |= 1;
+    // Seal off In 1's staging point (14,21), past the dock, by marking its neighbours as building.
+    for (const [x, y] of [[13, 21], [15, 21], [14, 22], [14, 20]]) w.grid[y * 40 + x] |= 1;
     const c = testContract(w);
     const t = scheduleTruck(w, c, 'in', w.minute + 1, 1);
     runMinutes(w, 120, updateTrucks);

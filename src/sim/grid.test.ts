@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   safeToBlock,
+  isTruckWalkable,
+  F_DOCK,
   F_CONSTRUCTION, F_WALL, flagsAt, isConnected, isForkliftWalkable, rebuildGrid, validateDemolish,
   validateDoor, validateFootprint, validateRack, validateStaging, findSpawnCell,
 } from './grid';
@@ -144,5 +146,33 @@ describe('safeToBlock', () => {
         expect([x, y, safe.has(`${x},${y}`)]).toEqual([x, y, isConnected(w, [{ x, y }])]);
       }
     }
+  });
+});
+
+describe('loading docks', () => {
+  it('lays a 3-wide, 2-deep dock in front of each door that forklifts use and trucks avoid', () => {
+    const w = built();
+    addDoor(w, 'd1', 14, 15);
+    for (const y of [16, 17]) {
+      for (const x of [13, 14, 15]) {
+        expect(flagsAt(w, x, y) & F_DOCK).toBeTruthy();
+        expect(isForkliftWalkable(w, x, y)).toBe(true);
+        expect(isTruckWalkable(w, x, y)).toBe(false);
+      }
+    }
+    expect(flagsAt(w, 14, 18) & F_DOCK).toBeFalsy();
+    expect(isTruckWalkable(w, 14, 18)).toBe(true);
+  });
+  it('needs the dock plus 8 cells of yard in front of a door', () => {
+    const w = built({ x: 10, y: 10, w: 14, h: 10 });
+    // South wall at y=19: dock 20-21, apron 22-29 fits exactly; one row higher does not.
+    expect(validateDoor(w, { x: 14, y: 19 }).ok).toBe(true);
+    const tight = built({ x: 10, y: 11, w: 14, h: 10 });
+    expect(validateDoor(tight, { x: 14, y: 20 })).toEqual({ ok: false, reason: 'Needs 10 clear cells outside (dock + truck bay)' });
+  });
+  it('rejects an expansion that covers a dock', () => {
+    const w = built();
+    addDoor(w, 'd1', 20, 15);
+    expect(validateFootprint(w, { x: 21, y: 16, w: 4, h: 4 })).toEqual({ ok: false, reason: 'Blocks a loading dock' });
   });
 });

@@ -34,6 +34,13 @@ describe('jobs', () => {
     expect(w.forklifts['fl-1'].state).toBe('toPickup');
     expect(Object.values(w.reservations)).toContain(mine.id);
   });
+  it('sends forklifts across the dock to the edge cell behind the truck', () => {
+    const w = readyWorld();
+    must(applyCommand(w, { type: 'placeRack', cell: { x: 12, y: 9 }, orient: 'h' }));
+    dockedTruck(w, 'in', { n: 1 });
+    updateJobs(w);
+    expect(w.forklifts['fl-1'].goals).toEqual([{ x: 14, y: 17 }]);
+  });
   it('keeps heavy products on rack level 0', () => {
     const w = readyWorld();
     must(applyCommand(w, { type: 'placeRack', cell: { x: 12, y: 9 }, orient: 'h' }));
@@ -106,17 +113,17 @@ describe('jobs', () => {
       expect(nearRack).toBe(false);
     }
   });
-  it('sends at most two forklifts to the same dock door at once', () => {
+  it('sends at most three forklifts to the same dock door at once', () => {
     const w = readyWorld();
     for (const x of [12, 15, 18]) must(applyCommand(w, { type: 'placeRack', cell: { x, y: 9 }, orient: 'h' }));
     buyForklifts(w, 4);
     dockedTruck(w, 'in', { n: 8 });
     updateJobs(w);
-    expect(Object.values(w.jobs).filter((j) => j.forkliftId)).toHaveLength(2);
+    expect(Object.values(w.jobs).filter((j) => j.forkliftId)).toHaveLength(3);
   });
   it('skips jobs blocked by a full door and takes other work instead', () => {
     const w = readyWorld();
-    buyForklifts(w, 2);
+    buyForklifts(w, 3);
     for (const [x, y] of [[12, 8], [15, 8], [18, 8], [12, 11], [15, 11], [18, 11]]) must(applyCommand(w, { type: 'placeRack', cell: { x, y }, orient: 'h' }));
     const urgent = testContract(w, { rush: true, deadline: w.minute + 30 });
     const racks = Object.values(w.racks);
@@ -125,9 +132,9 @@ describe('jobs', () => {
       attachPallet(w, createPallet(w, 'starters', urgent.id, loc), loc);
     }
     const { t } = dockedTruck(w, 'out', { contractId: urgent.id, n: 12 });
-    // Two forklifts are already working the outbound door, so it is at its cap.
-    const [f1, f2, f3] = Object.values(w.forklifts);
-    for (const f of [f1, f2]) {
+    // Three forklifts are already working the outbound door, so it is at its cap.
+    const [f1, f2, f0, f3] = Object.values(w.forklifts);
+    for (const f of [f1, f2, f0]) {
       const p = createPallet(w, 'starters', urgent.id, { kind: 'forklift', forkliftId: f.id });
       attachPallet(w, p, p.loc);
       const id = `job-${p.id}`;

@@ -20,6 +20,9 @@ export const RUNNING_PER_CELL = 15;
 export const BUILD_MINUTES = 120;
 export const FOOTPRINT = { minShort: 6, minLong: 8, maxLong: 36, maxShort: 24, minExpansion: 2, minSharedEdge: 2 } as const;
 export const DOOR_APRON = 8;
+/** Raised loading dock in front of each door: forklifts work from its outer edge, trucks back up to it. */
+export const DOCK_DEPTH = 2;
+export const DOCK_HALF_WIDTH = 1;
 export const TRUCK_STAGE_DIST = 4;
 export const DOCK_OFFSET = 0.6;
 
@@ -31,7 +34,7 @@ export const FRAGILE_FACTOR = 1.5;
 export const BLOCK_REPLAN_MIN = 3;
 export const BLOCKED_MARKER_MIN = 10;
 /** Dock doors are one cell wide: more forklifts than this at one door gridlock the doorway. */
-export const FORKLIFTS_PER_DOOR = 2;
+export const FORKLIFTS_PER_DOOR = 3;
 
 export const TRUCK_SPEED = 1.2;
 export const DOCK_MIN = 5;

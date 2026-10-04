@@ -1,6 +1,6 @@
 import { BLOCKED_MARKER_MIN, BLOCK_REPLAN_MIN, FAST_DRIVE, FAST_LIFT, FORKLIFT_SPEED, FRAGILE_FACTOR, HANDLE_MIN } from './balance';
 import type { CommandResult } from './commands';
-import { F_DOOR, cellOf, findSpawnCell, flagsAt, isConnected, isForkliftWalkable, isInterior, walkableNeighbors } from './grid';
+import { F_DOCK, F_DOOR, cellOf, findSpawnCell, flagsAt, isConnected, isDoorInward, isForkliftWalkable, isInterior, walkableNeighbors } from './grid';
 import { accessCells, assignJobTo, chooseDest, jobIdFor } from './jobs';
 import { attachPallet, detachPallet, isFreeFloor, isFreeStaging, releaseJob, reservationKey } from './pallets';
 import { findPath } from './pathfinding';
@@ -313,13 +313,33 @@ function dropOff(w: World, f: Forklift): void {
   w.stats.palletsHandled++;
 }
 
-/** An idle forklift standing in a door opening blocks the only way in or out, so it backs inside. */
+/**
+ * An idle forklift in a door opening or on the loading dock blocks the way in and out and the cell trucks are
+ * worked from, so it drives back inside to the nearest free floor cell that is not right behind a door.
+ */
 function leaveDoorway(w: World, f: Forklift, occ: Map<string, string>): void {
   const here = cellOf(f.pos);
-  if (!(flagsAt(w, here.x, here.y) & F_DOOR)) return;
-  const spot = walkableNeighbors(w, here).find((c) => !occ.has(cellKey(c)) && !(flagsAt(w, c.x, c.y) & F_DOOR));
+  if (!(flagsAt(w, here.x, here.y) & (F_DOOR | F_DOCK))) return;
+  const parked = (c: Vec2) => isInterior(w, c.x, c.y) && !occ.has(cellKey(c)) && !isDoorInward(w, c);
+  const seen = new Set<string>([cellKey(here)]);
+  const queue: Vec2[] = [here];
+  let spot: Vec2 | null = null;
+  for (let i = 0; i < queue.length && !spot && seen.size < 400; i++) {
+    for (const n of walkableNeighbors(w, queue[i])) {
+      const k = cellKey(n);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (parked(n)) {
+        spot = n;
+        break;
+      }
+      queue.push(n);
+    }
+  }
   if (!spot) return;
-  f.path = [spot];
+  const path = findPath(here, [spot], walk(w));
+  if (!path) return;
+  f.path = path;
   f.goals = [spot];
   f.state = 'moving';
 }

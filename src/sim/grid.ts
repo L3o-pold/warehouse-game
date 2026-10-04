@@ -1,4 +1,4 @@
-import { COST, DOOR_APRON, FOOTPRINT, LOT_H, LOT_W, ROAD_ROWS } from './balance';
+import { COST, DOCK_DEPTH, DOCK_HALF_WIDTH, DOOR_APRON, FOOTPRINT, LOT_H, LOT_W, ROAD_ROWS } from './balance';
 import { DIRS, cellKey, fmtMoney, type Dir, type Door, type Rect, type Vec2, type World } from './world';
 
 export const F_BUILDING = 1;
@@ -8,6 +8,7 @@ export const F_RACK = 8;
 export const F_STAGING = 16;
 export const F_FLOOR_PALLET = 32;
 export const F_CONSTRUCTION = 64;
+export const F_DOCK = 128;
 
 export type Check = { ok: true; cost: number } | { ok: false; reason: string };
 export type DoorCheck = { ok: true; cost: number; facing: Dir } | { ok: false; reason: string };
@@ -25,6 +26,26 @@ export const add = (a: Vec2, b: Vec2, k = 1): Vec2 => ({ x: a.x + b.x * k, y: a.
 export const manhattan = (a: Vec2, b: Vec2) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 export const cellOf = (p: Vec2): Vec2 => ({ x: Math.round(p.x), y: Math.round(p.y) });
 const same = (a: Vec2, b: Vec2) => a.x === b.x && a.y === b.y;
+const PERP: Record<Dir, Vec2> = { N: { x: 1, y: 0 }, S: { x: 1, y: 0 }, E: { x: 0, y: 1 }, W: { x: 0, y: 1 } };
+
+/** Dock platform cells in front of a door facing `facing` (DOCK_DEPTH deep, 2*DOCK_HALF_WIDTH+1 wide). */
+export function dockCells(cell: Vec2, facing: Dir): Vec2[] {
+  const out: Vec2[] = [];
+  for (let k = 1; k <= DOCK_DEPTH; k++) {
+    for (let l = -DOCK_HALF_WIDTH; l <= DOCK_HALF_WIDTH; l++) out.push(add(add(cell, DIRS[facing], k), PERP[facing], l));
+  }
+  return out;
+}
+
+/** The cell on the dock's outer edge, right behind a docked truck: where forklifts load and unload. */
+export const dockEdge = (cell: Vec2, facing: Dir): Vec2 => add(cell, DIRS[facing], DOCK_DEPTH);
+
+/** Truck bay: the yard cells beyond the dock that a truck needs to back in. */
+export function truckBay(cell: Vec2, facing: Dir): Vec2[] {
+  const out: Vec2[] = [];
+  for (let k = DOCK_DEPTH + 1; k <= DOCK_DEPTH + DOOR_APRON; k++) out.push(add(cell, DIRS[facing], k));
+  return out;
+}
 
 export function forEachCell(r: Rect, fn: (x: number, y: number) => void): void {
   for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) fn(x, y);
@@ -56,7 +77,10 @@ export function rebuildGrid(w: World): void {
   const mark = (c: Vec2, f: number) => {
     if (inLot(c.x, c.y)) g[c.y * LOT_W + c.x] |= f;
   };
-  for (const d of Object.values(w.doors)) mark(d.cell, F_DOOR);
+  for (const d of Object.values(w.doors)) {
+    mark(d.cell, F_DOOR);
+    for (const c of dockCells(d.cell, d.facing)) mark(c, F_DOCK);
+  }
   for (const r of Object.values(w.racks)) r.cells.forEach((c) => mark(c, F_RACK));
   for (const c of Object.values(w.staging)) mark(c, F_STAGING);
   for (const p of Object.values(w.pallets)) if (p.loc.kind === 'floor') mark(p.loc.cell, F_FLOOR_PALLET);
@@ -70,6 +94,7 @@ export function isInterior(w: World, x: number, y: number): boolean {
 
 export function isForkliftWalkable(w: World, x: number, y: number): boolean {
   const f = flagsAt(w, x, y);
+  if (f & F_DOCK && !(f & (F_BUILDING | F_CONSTRUCTION))) return true;
   if (!(f & F_BUILDING)) return false;
   if (f & F_WALL && !(f & F_DOOR)) return false;
   return (f & (F_RACK | F_FLOOR_PALLET)) === 0;
@@ -77,7 +102,7 @@ export function isForkliftWalkable(w: World, x: number, y: number): boolean {
 
 export function isTruckWalkable(w: World, x: number, y: number): boolean {
   if (x < 0 || x >= LOT_W || y < 0 || y >= LOT_H + ROAD_ROWS) return false;
-  return y >= LOT_H || (flagsAt(w, x, y) & (F_BUILDING | F_CONSTRUCTION)) === 0;
+  return y >= LOT_H || (flagsAt(w, x, y) & (F_BUILDING | F_CONSTRUCTION | F_DOCK)) === 0;
 }
 
 export function walkableNeighbors(w: World, c: Vec2): Vec2[] {
@@ -127,7 +152,8 @@ export function validateFootprint(w: World, r: Rect): Check {
   if (overlap) return fail('Overlaps your warehouse');
   const inside = (c: Vec2) => c.x >= r.x && c.y >= r.y && c.x < r.x + r.w && c.y < r.y + r.h;
   for (const d of Object.values(w.doors)) {
-    for (let k = 1; k <= DOOR_APRON; k++) if (inside(add(d.cell, DIRS[d.facing], k))) return fail('Blocks a dock apron');
+    if (dockCells(d.cell, d.facing).some(inside)) return fail('Blocks a loading dock');
+    if (truckBay(d.cell, d.facing).some(inside)) return fail('Blocks a truck bay');
   }
   const cost = r.w * r.h * COST.cell;
   if (cost > w.cash) return fail(`Need ${fmtMoney(cost)}`);
@@ -148,14 +174,16 @@ export function validateDoor(w: World, c: Vec2): DoorCheck {
   if (!isInterior(w, inward.x, inward.y) || flagsAt(w, inward.x, inward.y) & (F_RACK | F_FLOOR_PALLET)) {
     return fail('The inside of the door must be clear');
   }
-  const apron = new Set<string>();
-  for (let k = 1; k <= DOOR_APRON; k++) {
-    const a = add(c, DIRS[facing], k);
-    if (!inLot(a.x, a.y) || flagsAt(w, a.x, a.y) & (F_BUILDING | F_CONSTRUCTION)) return fail('Needs 8 clear cells of yard outside');
-    apron.add(cellKey(a));
-  }
+  const blocked = (c: Vec2) => !inLot(c.x, c.y) || (flagsAt(w, c.x, c.y) & (F_BUILDING | F_CONSTRUCTION)) !== 0;
+  const dock = dockCells(c, facing);
+  const bay = truckBay(c, facing);
+  if (dock.some(blocked) || bay.some(blocked)) return fail(`Needs ${DOCK_DEPTH + DOOR_APRON} clear cells outside (dock + truck bay)`);
+  const mine = new Set([...dock, ...bay].map(cellKey));
   for (const d of Object.values(w.doors)) {
-    for (let k = 1; k <= DOOR_APRON; k++) if (apron.has(cellKey(add(d.cell, DIRS[d.facing], k)))) return fail('Overlaps another dock apron');
+    // Docks may join into one long platform, but no truck bay may cross another door's dock or bay.
+    if (truckBay(d.cell, d.facing).some((x) => mine.has(cellKey(x)))) return fail('Overlaps another truck bay');
+    const theirDock = new Set(dockCells(d.cell, d.facing).map(cellKey));
+    if (bay.some((x) => theirDock.has(cellKey(x)))) return fail('Overlaps another truck bay');
   }
   if (w.cash < COST.door) return fail(`Need ${fmtMoney(COST.door)}`);
   return { ok: true, cost: COST.door, facing };
@@ -246,7 +274,7 @@ export function validateDemolish(w: World, c: Vec2): DemolishCheck {
 
 export function findSpawnCell(w: World): Vec2 | null {
   const taken = new Set(Object.values(w.forklifts).filter((f) => f.state !== 'parked').map((f) => cellKey(cellOf(f.pos))));
-  const free = (c: Vec2) => isForkliftWalkable(w, c.x, c.y) && !(flagsAt(w, c.x, c.y) & F_DOOR) && !taken.has(cellKey(c));
+  const free = (c: Vec2) => isForkliftWalkable(w, c.x, c.y) && !(flagsAt(w, c.x, c.y) & (F_DOOR | F_DOCK)) && !taken.has(cellKey(c));
   for (const d of Object.values(w.doors)) {
     const i = doorInward(d);
     if (free(i)) return i;

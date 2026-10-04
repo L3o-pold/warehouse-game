@@ -1,5 +1,5 @@
 import { FORKLIFTS_PER_DOOR, FULL_ALERT_EVERY_MIN, LOT_H, LOT_W } from './balance';
-import { cellOf, isForkliftWalkable, manhattan, safeToBlock, walkableNeighbors } from './grid';
+import { cellOf, dockEdge, isForkliftWalkable, manhattan, safeToBlock, walkableNeighbors } from './grid';
 import { isFloorSpot, isFreeStaging, releaseJob, reservationKey } from './pallets';
 import { findPath } from './pathfinding';
 import { PRODUCTS } from './products';
@@ -15,7 +15,7 @@ export function locCell(w: World, loc: PalletLoc | JobDest): Vec2 | null {
     case 'truck': {
       const t = w.trucks[loc.truckId];
       const d = t?.doorId ? w.doors[t.doorId] : undefined;
-      return d ? d.cell : null;
+      return d ? dockEdge(d.cell, d.facing) : null;
     }
     case 'rack': {
       const r = w.racks[loc.rackId];

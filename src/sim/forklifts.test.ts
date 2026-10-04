@@ -136,6 +136,15 @@ describe('forklifts', () => {
     runMinutes(w, 30, updateForklifts);
     expect(p.loc.kind === 'floor' && p.loc.cell.x === 12 && p.loc.cell.y === 12).toBe(false);
   });
+  it('does not idle on the loading dock', () => {
+    const w = readyWorld();
+    const f = w.forklifts['fl-1'];
+    f.pos = { x: 14, y: 17 };
+    f.prev = { ...f.pos };
+    runMinutes(w, 15, updateForklifts);
+    expect(f.pos.y).toBeLessThan(15);
+    expect(f.state).toBe('idle');
+  });
   it('a manual pallet order takes over that pallet’s job', () => {
     const w = readyWorld();
     must(applyCommand(w, { type: 'placeRack', cell: { x: 12, y: 10 }, orient: 'h' }));
