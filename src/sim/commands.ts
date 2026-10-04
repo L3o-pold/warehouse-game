@@ -3,6 +3,7 @@ import { refund, spend } from './economy';
 import {
   findSpawnCell, rackCells, rebuildGrid, validateDemolish, validateDoor, validateFootprint, validateRack, validateStaging,
 } from './grid';
+import { acceptContract, toggleRush } from './contracts';
 import { reassignTruck } from './trucks';
 import { cellKey, fmtMoney, genId, newForklift, pushEvent, type DoorKind, type Rect, type Vec2, type World } from './world';
 
@@ -16,7 +17,9 @@ export type Command =
   | { type: 'upgradeForklift'; forkliftId: string }
   | { type: 'repairForklift'; forkliftId: string }
   | { type: 'demolish'; cell: Vec2 }
-  | { type: 'reassignTruck'; truckId: string; doorId: string };
+  | { type: 'reassignTruck'; truckId: string; doorId: string }
+  | { type: 'acceptContract'; contractId: string }
+  | { type: 'toggleRush'; contractId: string };
 
 export type CommandResult = { ok: true } | { ok: false; reason: string };
 
@@ -125,5 +128,9 @@ function run(w: World, cmd: Command): CommandResult {
     }
     case 'reassignTruck':
       return reassignTruck(w, cmd.truckId, cmd.doorId);
+    case 'acceptContract':
+      return acceptContract(w, cmd.contractId);
+    case 'toggleRush':
+      return toggleRush(w, cmd.contractId);
   }
 }
