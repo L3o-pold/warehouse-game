@@ -90,15 +90,20 @@ const DOOR_CLEAR_ZONE = 2;
 const NEIGHBORS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 const same = (a: Vec2, b: Vec2) => a.x === b.x && a.y === b.y;
 
-export function isFreeFloor(w: World, c: Vec2): boolean {
+/** Structural part of the overflow rule (depends only on the grid and doors), so callers can cache it. */
+export function isFloorSpot(w: World, c: Vec2): boolean {
   if (!isInterior(w, c.x, c.y)) return false;
   if (flagsAt(w, c.x, c.y) & (F_RACK | F_STAGING | F_FLOOR_PALLET | F_DOOR)) return false;
   // Keep a clear zone around each doorway so overflow pallets never wall it off.
   if (Object.values(w.doors).some((d) => manhattan(doorInward(d), c) <= DOOR_CLEAR_ZONE)) return false;
-  if (Object.values(w.forklifts).some((f) => f.state !== 'parked' && same(cellOf(f.pos), c))) return false;
   // A pallet beside a rack can seal off the rack's only access cell.
-  if (NEIGHBORS.some(([dx, dy]) => flagsAt(w, c.x + dx, c.y + dy) & F_RACK)) return false;
-  return !w.reservations[`c:${cellKey(c)}`];
+  return !NEIGHBORS.some(([dx, dy]) => flagsAt(w, c.x + dx, c.y + dy) & F_RACK);
+}
+
+export const isUnderForklift = (w: World, c: Vec2) => Object.values(w.forklifts).some((f) => f.state !== 'parked' && same(cellOf(f.pos), c));
+
+export function isFreeFloor(w: World, c: Vec2): boolean {
+  return isFloorSpot(w, c) && !isUnderForklift(w, c) && !w.reservations[`c:${cellKey(c)}`];
 }
 
 export const isStoredLoc = (l: PalletLoc): boolean => l.kind === 'rack' || l.kind === 'staging' || l.kind === 'floor';

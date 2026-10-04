@@ -30,6 +30,8 @@ export const HANDLE_MIN = 1;
 export const FRAGILE_FACTOR = 1.5;
 export const BLOCK_REPLAN_MIN = 3;
 export const BLOCKED_MARKER_MIN = 10;
+/** Dock doors are one cell wide: more forklifts than this at one door gridlock the doorway. */
+export const FORKLIFTS_PER_DOOR = 2;
 
 export const TRUCK_SPEED = 1.2;
 export const DOCK_MIN = 5;

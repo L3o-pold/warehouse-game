@@ -64,6 +64,8 @@ export interface Forklift {
   waited: number;
   blockedUntil: number;
   focusTruckId: string | null;
+  /** Idle forklifts that found no assignable job wait until this minute before searching again. */
+  nextAssignAt: number;
 }
 
 export type TruckState = 'scheduled' | 'queued' | 'driving' | 'docking' | 'docked' | 'departing';
@@ -202,7 +204,7 @@ export const fmtMoney = (n: number): string => `${n < 0 ? '−' : ''}$${Math.abs
 export function newForklift(id: string, pos: Vec2, state: ForkliftState): Forklift {
   return {
     id, pos: { ...pos }, prev: { ...pos }, heading: 0, path: [], goals: [], state, jobId: null, carrying: null,
-    timer: 0, fast: false, brokenUntil: 0, waited: 0, blockedUntil: 0, focusTruckId: null,
+    timer: 0, fast: false, brokenUntil: 0, waited: 0, blockedUntil: 0, focusTruckId: null, nextAssignAt: 0,
   };
 }
 

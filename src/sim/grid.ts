@@ -255,3 +255,98 @@ export function findSpawnCell(w: World): Vec2 | null {
   for (let y = 0; y < LOT_H; y++) for (let x = 0; x < LOT_W; x++) if (free({ x, y })) return { x, y };
   return null;
 }
+
+/**
+ * Walkable cells that can be blocked (by a rack or a floor pallet) while keeping the warehouse connected:
+ * the same verdict as `isConnected(w, [cell])` for every cell, computed in one articulation-point pass
+ * instead of one flood fill per cell.
+ */
+export function safeToBlock(w: World): Set<string> {
+  const safe = new Set<string>();
+  if (!isConnected(w)) return safe;
+  const N = LOT_W * LOT_H;
+  const idx = (c: Vec2) => c.y * LOT_W + c.x;
+  const walk = (i: number) => isForkliftWalkable(w, i % LOT_W, Math.floor(i / LOT_W));
+  const nbrs = (i: number): number[] => {
+    const x = i % LOT_W;
+    const y = Math.floor(i / LOT_W);
+    const out: number[] = [];
+    for (const d of ALL_DIRS) {
+      const nx = x + DIRS[d].x;
+      const ny = y + DIRS[d].y;
+      if (inLot(nx, ny)) out.push(ny * LOT_W + nx);
+    }
+    return out;
+  };
+  const doors = Object.values(w.doors);
+  let root = doors.length ? idx(doors[0].cell) : -1;
+  for (let i = 0; i < N && root < 0; i++) if (walk(i)) root = i;
+  if (root < 0) return safe;
+
+  // Iterative DFS computing entry/exit times and low-links.
+  const tin = new Int32Array(N).fill(-1);
+  const tout = new Int32Array(N).fill(-1);
+  const low = new Int32Array(N);
+  const parent = new Int32Array(N).fill(-1);
+  let timer = 0;
+  const stack: { v: number; ns: number[]; k: number }[] = [{ v: root, ns: nbrs(root).filter(walk), k: 0 }];
+  tin[root] = low[root] = timer++;
+  while (stack.length) {
+    const top = stack[stack.length - 1];
+    if (top.k < top.ns.length) {
+      const u = top.ns[top.k++];
+      if (tin[u] < 0) {
+        parent[u] = top.v;
+        tin[u] = low[u] = timer++;
+        stack.push({ v: u, ns: nbrs(u).filter(walk), k: 0 });
+      } else if (u !== parent[top.v]) low[top.v] = Math.min(low[top.v], tin[u]);
+    } else {
+      stack.pop();
+      tout[top.v] = timer++;
+      const p = parent[top.v];
+      if (p >= 0) low[p] = Math.min(low[p], low[top.v]);
+    }
+  }
+
+  // Subtrees that lose their link to the root when v is blocked.
+  const separated = new Map<number, [number, number][]>();
+  for (let u = 0; u < N; u++) {
+    const v = parent[u];
+    if (v >= 0 && v !== root && low[u] >= tin[v]) {
+      const list = separated.get(v) ?? [];
+      list.push([tin[u], tout[u]]);
+      separated.set(v, list);
+    }
+  }
+  const stillReached = (x: number, v: number) => {
+    if (x === v || tin[x] < 0) return false;
+    const seps = separated.get(v);
+    return !seps || !seps.some(([a, b]) => tin[x] >= a && tin[x] <= b);
+  };
+  const mustReach = [...doors.map((d) => idx(d.cell)), ...Object.values(w.staging).map(idx)];
+  const needAccess: number[] = Object.values(w.racks).flatMap((r) => r.cells.map(idx));
+  for (let i = 0; i < N; i++) if (w.grid[i] & F_FLOOR_PALLET) needAccess.push(i);
+  const accessible = (t: number, v: number) => nbrs(t).some((n) => walk(n) && stillReached(n, v));
+  const mustReachSet = new Set(mustReach);
+  const needAccessSet = new Set(needAccess);
+  // Walkable neighbours each target can currently be reached from.
+  const accessFrom = new Map<number, number[]>();
+  for (const t of needAccess) accessFrom.set(t, nbrs(t).filter((n) => walk(n) && tin[n] >= 0));
+
+  for (let v = 0; v < N; v++) {
+    if (v === root || tin[v] < 0) continue;
+    if (separated.has(v)) {
+      // Articulation point: blocking it cuts off whole subtrees, so check every target.
+      if (!mustReach.every((t) => stillReached(t, v))) continue;
+      if (!needAccess.every((t) => accessible(t, v))) continue;
+    } else {
+      // Not an articulation point: only v itself and targets right next to it can lose access.
+      if (mustReachSet.has(v)) continue;
+      const hurt = nbrs(v).some((t) => needAccessSet.has(t) && !accessFrom.get(t)!.some((n) => n !== v));
+      if (hurt) continue;
+    }
+    if (!accessible(v, v)) continue;
+    safe.add(`${v % LOT_W},${Math.floor(v / LOT_W)}`);
+  }
+  return safe;
+}

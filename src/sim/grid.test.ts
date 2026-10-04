@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  safeToBlock,
   F_CONSTRUCTION, F_WALL, flagsAt, isConnected, isForkliftWalkable, rebuildGrid, validateDemolish,
   validateDoor, validateFootprint, validateRack, validateStaging, findSpawnCell,
 } from './grid';
@@ -123,5 +124,25 @@ describe('findSpawnCell', () => {
     expect(findSpawnCell(w)).toEqual({ x: 11, y: 7 });
     addDoor(w, 'd1', 14, 15);
     expect(findSpawnCell(w)).toEqual({ x: 14, y: 14 });
+  });
+});
+
+describe('safeToBlock', () => {
+  it('agrees with isConnected for every free interior cell', () => {
+    const w = built();
+    addDoor(w, 'd1', 14, 15);
+    addDoor(w, 'd2', 20, 15, 'out');
+    for (const [id, x, y] of [['a', 12, 8], ['b', 16, 10], ['c', 19, 12], ['d', 13, 12]] as const) {
+      w.racks[id] = { id, cells: [{ x, y }, { x: x + 1, y }], slots: [null, null, null, null] };
+    }
+    w.racks.v = { id: 'v', cells: [{ x: 17, y: 7 }, { x: 17, y: 8 }], slots: [null, null, null, null] };
+    rebuildGrid(w);
+    const safe = safeToBlock(w);
+    for (let y = 7; y <= 14; y++) {
+      for (let x = 11; x <= 22; x++) {
+        if (!isForkliftWalkable(w, x, y)) continue;
+        expect([x, y, safe.has(`${x},${y}`)]).toEqual([x, y, isConnected(w, [{ x, y }])]);
+      }
+    }
   });
 });

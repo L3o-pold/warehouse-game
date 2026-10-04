@@ -3,7 +3,7 @@ import { applyCommand } from './commands';
 import { attachPallet, createPallet } from './pallets';
 import { rebuildGrid } from './grid';
 import { scheduleTruck } from './trucks';
-import { updateJobs } from './jobs';
+import { chooseDest, updateJobs } from './jobs';
 import type { ContractType, ProductId, World } from './world';
 import { must, readyWorld, testContract } from './testUtils';
 
@@ -37,13 +37,14 @@ describe('jobs', () => {
   it('keeps heavy products on rack level 0', () => {
     const w = readyWorld();
     must(applyCommand(w, { type: 'placeRack', cell: { x: 12, y: 9 }, orient: 'h' }));
-    buyForklifts(w, 2);
+    buyForklifts(w, 1);
     dockedTruck(w, 'in', { product: 'playmats' });
     updateJobs(w);
-    const dests = Object.values(w.jobs).map((j) => j.dest!);
-    const rackSlots = dests.filter((d) => d.kind === 'rack').map((d) => (d.kind === 'rack' ? d.slot : -1));
-    expect(rackSlots.sort()).toEqual([0, 1]);
-    expect(dests.some((d) => d.kind === 'floor' || d.kind === 'staging')).toBe(true);
+    const assigned = Object.values(w.jobs).filter((j) => j.forkliftId);
+    expect(assigned.map((j) => (j.dest?.kind === 'rack' ? j.dest.slot : -1)).sort()).toEqual([0, 1]);
+    const third = Object.values(w.jobs).find((j) => !j.forkliftId)!;
+    const d = chooseDest(w, third, w.pallets[third.palletId])!;
+    expect(d.kind === 'floor' || d.kind === 'staging').toBe(true);
   });
   it('falls back to staging, then floor, when there are no racks', () => {
     const w = readyWorld();
@@ -61,7 +62,7 @@ describe('jobs', () => {
     updateJobs(w);
     const taken = Object.values(w.forklifts).map((f) => `${f.pos.x},${f.pos.y}`);
     for (const j of Object.values(w.jobs)) {
-      const d = j.dest!;
+      const d = j.dest ?? chooseDest(w, j, w.pallets[j.palletId])!;
       expect(d.kind).toBe('floor');
       if (d.kind !== 'floor') continue;
       for (const door of [{ x: 14, y: 14 }, { x: 20, y: 14 }]) expect(Math.abs(d.cell.x - door.x) + Math.abs(d.cell.y - door.y)).toBeGreaterThan(2);
@@ -99,11 +100,47 @@ describe('jobs', () => {
     dockedTruck(w, 'in', { n: 4 });
     updateJobs(w);
     for (const j of Object.values(w.jobs)) {
-      const d = j.dest!;
+      const d = j.dest ?? chooseDest(w, j, w.pallets[j.palletId])!;
       if (d.kind !== 'floor') continue;
       const nearRack = [{ x: 15, y: 12 }, { x: 16, y: 12 }].some((c) => Math.abs(c.x - d.cell.x) + Math.abs(c.y - d.cell.y) === 1);
       expect(nearRack).toBe(false);
     }
+  });
+  it('sends at most two forklifts to the same dock door at once', () => {
+    const w = readyWorld();
+    for (const x of [12, 15, 18]) must(applyCommand(w, { type: 'placeRack', cell: { x, y: 9 }, orient: 'h' }));
+    buyForklifts(w, 4);
+    dockedTruck(w, 'in', { n: 8 });
+    updateJobs(w);
+    expect(Object.values(w.jobs).filter((j) => j.forkliftId)).toHaveLength(2);
+  });
+  it('skips jobs blocked by a full door and takes other work instead', () => {
+    const w = readyWorld();
+    buyForklifts(w, 2);
+    for (const [x, y] of [[12, 8], [15, 8], [18, 8], [12, 11], [15, 11], [18, 11]]) must(applyCommand(w, { type: 'placeRack', cell: { x, y }, orient: 'h' }));
+    const urgent = testContract(w, { rush: true, deadline: w.minute + 30 });
+    const racks = Object.values(w.racks);
+    for (let i = 0; i < 12; i++) {
+      const loc = { kind: 'rack' as const, rackId: racks[Math.floor(i / 4) + 2].id, slot: i % 4 };
+      attachPallet(w, createPallet(w, 'starters', urgent.id, loc), loc);
+    }
+    const { t } = dockedTruck(w, 'out', { contractId: urgent.id, n: 12 });
+    // Two forklifts are already working the outbound door, so it is at its cap.
+    const [f1, f2, f3] = Object.values(w.forklifts);
+    for (const f of [f1, f2]) {
+      const p = createPallet(w, 'starters', urgent.id, { kind: 'forklift', forkliftId: f.id });
+      attachPallet(w, p, p.loc);
+      const id = `job-${p.id}`;
+      w.jobs[id] = { id, type: 'LOAD', palletId: p.id, forkliftId: f.id, dest: { kind: 'truck', truckId: t.id }, manual: false };
+      f.jobId = id;
+      f.state = 'toDrop';
+    }
+    const calm = testContract(w, { deadline: w.minute + 5000 });
+    w.staging['21,13'] = { x: 21, y: 13 };
+    const p = createPallet(w, 'starters', calm.id, { kind: 'staging', cell: { x: 21, y: 13 } });
+    attachPallet(w, p, p.loc);
+    updateJobs(w);
+    expect(f3.jobId).toBe(`job-${p.id}`);
   });
   it('raises a throttled "Warehouse full" alert when nothing can be placed', () => {
     const w = readyWorld();
