@@ -58,12 +58,14 @@ interface GameState {
   setHoverCell(c: Vec2 | null): void;
   setDragRect(r: DragRect | null): void;
   resetCamera(): void;
+  buildDragStart: Vec2 | null;
+  setBuildDragStart(c: Vec2 | null): void;
 }
 
 export const useGame = create<GameState>((set, get) => ({
   screen: 'menu', world: null, hud: null, speed: 1, lastSpeed: 1, selection: null, tool: null, buildOpen: false,
   contractsOpen: false, checklistOpen: true, roofCut: false, hoverCell: null, dragRect: null, cameraNonce: 0,
-  toasts: [], floaters: [], seenEventId: 0,
+  toasts: [], floaters: [], seenEventId: 0, buildDragStart: null,
 
   startGame(mode, seed) {
     const world = newGame(mode, seed);
@@ -116,7 +118,7 @@ export const useGame = create<GameState>((set, get) => ({
     set({ selection });
   },
   setTool(tool) {
-    set({ tool, selection: tool ? null : get().selection, buildOpen: tool ? true : get().buildOpen });
+    set({ tool, buildDragStart: null, selection: tool ? null : get().selection, buildOpen: tool ? true : get().buildOpen });
   },
   toggleBuild() {
     const open = !get().buildOpen;
@@ -142,4 +144,10 @@ export const useGame = create<GameState>((set, get) => ({
   resetCamera() {
     set({ cameraNonce: get().cameraNonce + 1 });
   },
+  setBuildDragStart(buildDragStart) {
+    set({ buildDragStart });
+  },
 }));
+
+// Dev-only handle for debugging from the browser console.
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __game: typeof useGame }).__game = useGame;
