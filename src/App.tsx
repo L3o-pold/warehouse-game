@@ -1,16 +1,17 @@
-import { Canvas } from '@react-three/fiber';
+import { useEffect } from 'react';
+import { useGame } from './game/store';
+import { Scene } from './render/Scene';
 
 export default function App() {
+  const world = useGame((s) => s.world);
+  useEffect(() => {
+    if (!useGame.getState().world) useGame.getState().startGame('scenario', 42);
+  }, []);
+  const clock = useGame((s) => s.hud?.clock);
   return (
-    <div className="h-full w-full">
-      <Canvas camera={{ position: [4, 4, 4] }}>
-        <ambientLight />
-        <mesh>
-          <boxGeometry />
-          <meshStandardMaterial color="#2563EB" />
-        </mesh>
-      </Canvas>
-      <div className="pointer-events-none absolute left-4 top-4 rounded-xl bg-white/85 px-4 py-2 font-bold shadow">WareTrack Tycoon</div>
+    <div className="relative h-full w-full">
+      {world && <Scene />}
+      <div className="pointer-events-none absolute left-4 top-4 rounded-xl bg-white/85 px-4 py-2 font-bold shadow">{clock}</div>
     </div>
   );
 }
