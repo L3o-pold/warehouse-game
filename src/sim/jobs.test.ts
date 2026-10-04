@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from './commands';
 import { attachPallet, createPallet } from './pallets';
+import { rebuildGrid } from './grid';
 import { scheduleTruck } from './trucks';
 import { updateJobs } from './jobs';
 import type { ContractType, ProductId, World } from './world';
@@ -52,6 +53,57 @@ describe('jobs', () => {
     updateJobs(w);
     const kinds = Object.values(w.jobs).map((j) => j.dest?.kind).sort();
     expect(kinds).toEqual(['floor', 'staging']);
+  });
+  it('never picks floor overflow cells next to a doorway or under a forklift', () => {
+    const w = readyWorld();
+    buyForklifts(w, 3);
+    dockedTruck(w, 'in', { n: 4 });
+    updateJobs(w);
+    const taken = Object.values(w.forklifts).map((f) => `${f.pos.x},${f.pos.y}`);
+    for (const j of Object.values(w.jobs)) {
+      const d = j.dest!;
+      expect(d.kind).toBe('floor');
+      if (d.kind !== 'floor') continue;
+      for (const door of [{ x: 14, y: 14 }, { x: 20, y: 14 }]) expect(Math.abs(d.cell.x - door.x) + Math.abs(d.cell.y - door.y)).toBeGreaterThan(2);
+      expect(taken).not.toContain(`${d.cell.x},${d.cell.y}`);
+    }
+  });
+  it('assigns reachable work even when many more urgent jobs are unreachable', () => {
+    const w = readyWorld();
+    // Wall off a pocket x11..14, y7..8 with racks (placed directly, bypassing validation).
+    w.racks.wallA = { id: 'wallA', cells: [{ x: 15, y: 7 }, { x: 15, y: 8 }], slots: [null, null, null, null] };
+    w.racks.wallB = { id: 'wallB', cells: [{ x: 11, y: 9 }, { x: 12, y: 9 }], slots: [null, null, null, null] };
+    w.racks.wallC = { id: 'wallC', cells: [{ x: 13, y: 9 }, { x: 14, y: 9 }], slots: [null, null, null, null] };
+    const rush = testContract(w, { rush: true, deadline: w.minute + 60 });
+    const calm = testContract(w, { deadline: w.minute + 2000 });
+    for (let x = 11; x <= 14; x++) for (const y of [7, 8]) {
+      w.staging[`${x},${y}`] = { x, y };
+      const p = createPallet(w, 'boxes', rush.id, { kind: 'staging', cell: { x, y } });
+      attachPallet(w, p, p.loc);
+    }
+    w.staging['18,12'] = { x: 18, y: 12 };
+    const reachable = createPallet(w, 'boxes', calm.id, { kind: 'staging', cell: { x: 18, y: 12 } });
+    attachPallet(w, reachable, reachable.loc);
+    rebuildGrid(w);
+    const f = w.forklifts['fl-1'];
+    f.pos = { x: 20, y: 12 };
+    f.prev = { ...f.pos };
+    updateJobs(w);
+    expect(w.jobs[`job-${reachable.id}`].forkliftId).toBe('fl-1');
+  });
+  it('never picks floor overflow cells next to a rack', () => {
+    const w = readyWorld();
+    w.racks.r = { id: 'r', cells: [{ x: 15, y: 12 }, { x: 16, y: 12 }], slots: ['x', 'x', 'x', 'x'] };
+    rebuildGrid(w);
+    buyForklifts(w, 3);
+    dockedTruck(w, 'in', { n: 4 });
+    updateJobs(w);
+    for (const j of Object.values(w.jobs)) {
+      const d = j.dest!;
+      if (d.kind !== 'floor') continue;
+      const nearRack = [{ x: 15, y: 12 }, { x: 16, y: 12 }].some((c) => Math.abs(c.x - d.cell.x) + Math.abs(c.y - d.cell.y) === 1);
+      expect(nearRack).toBe(false);
+    }
   });
   it('raises a throttled "Warehouse full" alert when nothing can be placed', () => {
     const w = readyWorld();

@@ -1,6 +1,6 @@
 import { BLOCKED_MARKER_MIN, BLOCK_REPLAN_MIN, FAST_DRIVE, FAST_LIFT, FORKLIFT_SPEED, FRAGILE_FACTOR, HANDLE_MIN } from './balance';
 import type { CommandResult } from './commands';
-import { cellOf, findSpawnCell, isForkliftWalkable, walkableNeighbors } from './grid';
+import { F_DOOR, cellOf, findSpawnCell, flagsAt, isForkliftWalkable, walkableNeighbors } from './grid';
 import { accessCells, assignJobTo, jobIdFor } from './jobs';
 import { attachPallet, detachPallet, isFreeFloor, isFreeStaging, releaseJob, reservationKey } from './pallets';
 import { findPath } from './pathfinding';
@@ -116,14 +116,44 @@ function replan(w: World, f: Forklift, occ: Map<string, string>, avoidOthers: bo
   return false;
 }
 
-function nudge(w: World, other: Forklift, occ: Map<string, string>, by: Forklift): void {
-  const free = walkableNeighbors(w, cellOf(other.pos)).filter((c) => !occ.has(cellKey(c)) && !same(c, cellOf(by.pos)));
+function nudge(w: World, other: Forklift, occ: Map<string, string>, by: Forklift): boolean {
+  const free = walkableNeighbors(w, cellOf(other.pos)).filter(
+    (c) => !occ.has(cellKey(c)) && !same(c, cellOf(by.pos)) && !(flagsAt(w, c.x, c.y) & F_DOOR),
+  );
   // Prefer stepping aside off the requester's path; in a 1-wide aisle, step ahead along it instead.
   const spot = free.find((c) => !by.path.some((p) => same(p, c))) ?? free[0];
-  if (!spot) return;
+  if (!spot) return false;
   other.path = [spot];
   other.goals = [spot];
   other.state = 'moving';
+  return true;
+}
+
+const headOn = (f: Forklift, other: Forklift) => !!other.path[0] && same(other.path[0], cellOf(f.pos));
+
+function asideSpot(w: World, f: Forklift, other: Forklift, occ: Map<string, string>): Vec2 | null {
+  const avoid = [cellOf(other.pos), ...other.path.slice(0, 3)];
+  return walkableNeighbors(w, cellOf(f.pos)).find((c) => !occ.has(cellKey(c)) && !avoid.some((a) => same(a, c))) ?? null;
+}
+
+/** In a head-on standoff the forklift that can step aside does; if both can, the empty one (then the higher id) yields. */
+function shouldYield(w: World, f: Forklift, other: Forklift, occ: Map<string, string>): boolean {
+  const mine = asideSpot(w, f, other, occ);
+  if (!mine) return false;
+  if (!asideSpot(w, other, f, occ)) return true;
+  if (!!f.carrying !== !!other.carrying) return !f.carrying;
+  return f.id > other.id;
+}
+
+function giveWay(w: World, f: Forklift, other: Forklift, occ: Map<string, string>): void {
+  const spot = asideSpot(w, f, other, occ)!;
+  const here = cellKey(cellOf(f.pos));
+  f.pos = { ...spot };
+  f.heading = Math.atan2(spot.y - f.prev.y, spot.x - f.prev.x);
+  if (occ.get(here) === f.id) occ.delete(here);
+  occ.set(cellKey(spot), f.id);
+  f.path = findPath(spot, f.goals, walk(w)) ?? [];
+  f.waited = 0;
 }
 
 function stepMove(w: World, f: Forklift, occ: Map<string, string>): 'moving' | 'arrived' | 'blocked' {
@@ -135,7 +165,16 @@ function stepMove(w: World, f: Forklift, occ: Map<string, string>): 'moving' | '
   const otherId = occ.get(nk);
   if (otherId && otherId !== f.id) {
     const other = w.forklifts[otherId];
-    if (other && other.state === 'idle') nudge(w, other, occ, f);
+    if (other && other.state === 'idle') {
+      // An idle forklift that cannot move aside (e.g. in a doorway) needs us to make room instead.
+      if (!nudge(w, other, occ, f) && asideSpot(w, f, other, occ)) {
+        giveWay(w, f, other, occ);
+        return 'blocked';
+      }
+    } else if (other && headOn(f, other) && shouldYield(w, f, other, occ)) {
+      giveWay(w, f, other, occ);
+      return 'blocked';
+    }
     f.waited += 1;
     if (f.waited >= BLOCK_REPLAN_MIN) {
       f.waited = 0;
@@ -211,6 +250,17 @@ function dropOff(w: World, f: Forklift): void {
   w.stats.palletsHandled++;
 }
 
+/** An idle forklift standing in a door opening blocks the only way in or out, so it backs inside. */
+function leaveDoorway(w: World, f: Forklift, occ: Map<string, string>): void {
+  const here = cellOf(f.pos);
+  if (!(flagsAt(w, here.x, here.y) & F_DOOR)) return;
+  const spot = walkableNeighbors(w, here).find((c) => !occ.has(cellKey(c)) && !(flagsAt(w, c.x, c.y) & F_DOOR));
+  if (!spot) return;
+  f.path = [spot];
+  f.goals = [spot];
+  f.state = 'moving';
+}
+
 export function updateForklifts(w: World): void {
   const occ = new Map<string, string>();
   for (const f of Object.values(w.forklifts)) if (f.state !== 'parked') occ.set(cellKey(cellOf(f.pos)), f.id);
@@ -252,6 +302,9 @@ export function updateForklifts(w: World): void {
         }
         f.timer -= 1;
         if (f.timer <= 0) dropOff(w, f);
+        break;
+      case 'idle':
+        leaveDoorway(w, f, occ);
         break;
       default:
         break;

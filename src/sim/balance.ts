@@ -23,7 +23,7 @@ export const DOOR_APRON = 8;
 export const TRUCK_STAGE_DIST = 4;
 export const DOCK_OFFSET = 0.6;
 
-export const FORKLIFT_SPEED = 0.8;
+export const FORKLIFT_SPEED = 1.2;
 export const FAST_DRIVE = 1.15;
 export const FAST_LIFT = 1.3;
 export const HANDLE_MIN = 1;
@@ -60,15 +60,15 @@ export const FULL_ALERT_EVERY_MIN = 60;
 export const OFFERS = {
   qtyDay1: [6, 12],
   qtyDay7: [30, 60],
-  storageFeePerPallet: [80, 120],
-  storageRent: [30, 50],
+  storageFeePerPallet: [450, 650],
+  storageRent: [80, 140],
   storageDays: [1, 3],
   storageArriveHours: [2, 8],
-  crossdockPerPallet: [250, 320],
+  crossdockPerPallet: [1000, 1400],
   crossdockArriveHours: [2, 6],
   crossdockWindowMin: [240, 300],
-  outboundBase: 150,
-  outboundValuePct: 0.08,
+  outboundBase: 600,
+  outboundValuePct: 0.2,
   outboundArriveHours: [3, 8],
   pickupWindowMin: 360,
   outTruckDelayMin: 30,

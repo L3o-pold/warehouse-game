@@ -66,6 +66,54 @@ describe('forklifts', () => {
     runMinutes(w, 120, updateForklifts);
     expect(a.pos).toEqual({ x: 22, y: 10 });
   });
+  it('resolves a head-on standoff in a door opening', () => {
+    const w = readyWorld();
+    must(applyCommand(w, { type: 'buyForklift' }));
+    const [a, b] = Object.values(w.forklifts);
+    a.pos = { x: 14, y: 15 };
+    a.prev = { ...a.pos };
+    b.pos = { x: 14, y: 14 };
+    b.prev = { ...b.pos };
+    must(applyCommand(w, { type: 'orderForklifts', forkliftIds: [a.id], target: { kind: 'cell', cell: { x: 14, y: 12 } } }));
+    must(applyCommand(w, { type: 'orderForklifts', forkliftIds: [b.id], target: { kind: 'cell', cell: { x: 14, y: 15 } } }));
+    let bReachedDoor = false;
+    for (let i = 0; i < 40; i++) {
+      runMinutes(w, 1, updateForklifts);
+      if (b.pos.x === 14 && b.pos.y === 15) bReachedDoor = true;
+    }
+    expect(a.pos).toEqual({ x: 14, y: 12 });
+    expect(bReachedDoor).toBe(true);
+  });
+  it('never idles inside a door opening', () => {
+    const w = readyWorld();
+    const f = w.forklifts['fl-1'];
+    f.pos = { x: 14, y: 15 };
+    f.prev = { ...f.pos };
+    runMinutes(w, 5, updateForklifts);
+    expect(f.pos).not.toEqual({ x: 14, y: 15 });
+    expect(f.state).toBe('idle');
+  });
+  it('steps aside so an idle forklift can leave a door opening', () => {
+    const w = readyWorld();
+    must(applyCommand(w, { type: 'buyForklift' }));
+    const [a, b] = Object.values(w.forklifts);
+    a.pos = { x: 14, y: 15 };
+    a.prev = { ...a.pos };
+    b.pos = { x: 13, y: 12 };
+    b.prev = { ...b.pos };
+    must(applyCommand(w, { type: 'orderForklifts', forkliftIds: [b.id], target: { kind: 'cell', cell: { x: 14, y: 14 } } }));
+    runMinutes(w, 10, updateForklifts);
+    // b now waits in the door's inward cell; a is idle in the doorway. Ask b to enter the doorway.
+    b.path = [{ x: 14, y: 15 }];
+    b.goals = [{ x: 14, y: 15 }];
+    b.state = 'moving';
+    let aLeft = false;
+    for (let i = 0; i < 20; i++) {
+      runMinutes(w, 1, updateForklifts);
+      if (!(a.pos.x === 14 && a.pos.y === 15)) aLeft = true;
+    }
+    expect(aLeft).toBe(true);
+  });
   it('a manual pallet order takes over that pallet’s job', () => {
     const w = readyWorld();
     must(applyCommand(w, { type: 'placeRack', cell: { x: 12, y: 10 }, orient: 'h' }));

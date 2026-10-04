@@ -32,7 +32,7 @@ This spec covers **sub-project 1 only**, a playable, fun demo.
 - Empty **40×30 cell** lot (1 cell = 1 m) beside a road along the south edge; the yard is the open lot area.
 - **$60,000** cash, **1 forklift** (parked at the lot entrance; it becomes usable once a building exists), reputation **3★**.
 - Clock starts on **Day 1 at 06:00**. **1 real second = 10 in-game minutes at 1×** (one in-game day ≈ 2.4 real minutes, 7 days ≈ 17 real minutes at 1×). Speeds are 1×, 2× and 4×, plus pause.
-- **Movement tuning** (in-game units): forklift drives 0.8 cells/min (≈ 8 cells per real second at 1×), handling 1 min per pallet; trucks move 1.2 cells/min in the yard and take 5 min to dock. All tuning numbers live in `src/sim/balance.ts`.
+- **Movement tuning** (in-game units): forklift drives 1.2 cells/min (≈ 12 cells per real second at 1×), handling 1 min per pallet; trucks move 1.2 cells/min in the yard and take 5 min to dock. All tuning numbers live in `src/sim/balance.ts`.
 - The contract board starts with 3 offers.
 
 ### 2.3 Construction

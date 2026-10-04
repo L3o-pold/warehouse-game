@@ -3,11 +3,11 @@ import { cellOf, isForkliftWalkable, manhattan, walkableNeighbors } from './grid
 import { isFreeFloor, isFreeStaging, releaseJob, reservationKey } from './pallets';
 import { findPath } from './pathfinding';
 import { PRODUCTS } from './products';
-import { pushEvent, type Forklift, type Job, type JobDest, type JobType, type Pallet, type PalletLoc, type ProductId, type Truck, type Vec2, type World } from './world';
+import { cellKey, pushEvent, type Forklift, type Job, type JobDest, type JobType, type Pallet, type PalletLoc, type ProductId, type Truck, type Vec2, type World } from './world';
 
 export const jobIdFor = (palletId: string): string => `job-${palletId}`;
 const walk = (w: World) => (x: number, y: number) => isForkliftWalkable(w, x, y);
-const CANDIDATES_PER_FORKLIFT = 6;
+const MAX_ATTEMPTS_PER_FORKLIFT = 25;
 
 export function locCell(w: World, loc: PalletLoc | JobDest): Vec2 | null {
   switch (loc.kind) {
@@ -200,6 +200,24 @@ function relatesToTruck(w: World, j: Job, truckId: string): boolean {
   return t.kind === 'out' && p.contractId === t.contractId && (j.type === 'LOAD' || j.type === 'CROSSDOCK');
 }
 
+/** BFS distances over forklift-walkable cells (start cell included even if not walkable). */
+function reachableFrom(w: World, start: Vec2): Map<string, number> {
+  const dist = new Map<string, number>([[cellKey(start), 0]]);
+  const queue: Vec2[] = [start];
+  for (let i = 0; i < queue.length; i++) {
+    const c = queue[i];
+    const d = dist.get(cellKey(c))!;
+    for (const n of walkableNeighbors(w, c)) {
+      const k = cellKey(n);
+      if (!dist.has(k)) {
+        dist.set(k, d + 1);
+        queue.push(n);
+      }
+    }
+  }
+  return dist;
+}
+
 export function assignJobs(w: World): void {
   const idle = Object.values(w.forklifts).filter((f) => f.state === 'idle' && f.blockedUntil <= w.minute);
   if (!idle.length) return;
@@ -214,16 +232,18 @@ export function assignJobs(w: World): void {
       const focused = pool.filter((j) => relatesToTruck(w, j, f.focusTruckId!));
       if (focused.length) pool = focused;
     }
-    const here = cellOf(f.pos);
+    const dist = reachableFrom(w, cellOf(f.pos));
     const ranked = pool
       .map((j) => {
         const p = w.pallets[j.palletId];
         const c = w.contracts[p.contractId];
-        const at = locCell(w, p.loc) ?? here;
-        return { j, rush: c?.rush ? 0 : 1, deadline: c?.deadline ?? Infinity, dist: manhattan(here, at) };
+        let d = Infinity;
+        for (const a of accessCells(w, p.loc)) d = Math.min(d, dist.get(cellKey(a)) ?? Infinity);
+        return { j, rush: c?.rush ? 0 : 1, deadline: c?.deadline ?? Infinity, dist: d };
       })
+      .filter((r) => r.dist < Infinity)
       .sort((a, b) => a.rush - b.rush || a.deadline - b.deadline || a.dist - b.dist)
-      .slice(0, CANDIDATES_PER_FORKLIFT);
+      .slice(0, MAX_ATTEMPTS_PER_FORKLIFT);
     for (const { j } of ranked) if (assignJobTo(w, f, j)) break;
   }
 }

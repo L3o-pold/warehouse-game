@@ -382,7 +382,7 @@ export const DOOR_APRON = 8;
 export const TRUCK_STAGE_DIST = 4;
 export const DOCK_OFFSET = 0.6;
 
-export const FORKLIFT_SPEED = 0.8;
+export const FORKLIFT_SPEED = 1.2;
 export const FAST_DRIVE = 1.15;
 export const FAST_LIFT = 1.3;
 export const HANDLE_MIN = 1;

@@ -1,4 +1,5 @@
-import { F_DOOR, F_FLOOR_PALLET, F_RACK, F_STAGING, flagsAt, isDoorInward, isInterior, rebuildGrid } from './grid';
+import { LOT_W } from './balance';
+import { F_DOOR, F_FLOOR_PALLET, F_RACK, F_STAGING, cellOf, doorInward, flagsAt, inLot, isInterior, manhattan } from './grid';
 import { cellKey, genId, type Job, type JobDest, type Pallet, type PalletLoc, type ProductId, type Vec2, type World } from './world';
 
 export function createPallet(w: World, product: ProductId, contractId: string, loc: PalletLoc): Pallet {
@@ -14,6 +15,14 @@ export function reservationKey(d: JobDest): string | null {
   return null;
 }
 
+/** Toggles the floor-pallet bit in place (a full rebuild would still see the pallet's old loc). */
+function setFloorFlag(w: World, c: Vec2, on: boolean): void {
+  if (!inLot(c.x, c.y)) return;
+  const i = c.y * LOT_W + c.x;
+  w.grid[i] = on ? w.grid[i] | F_FLOOR_PALLET : w.grid[i] & ~F_FLOOR_PALLET;
+  w.gridVersion++;
+}
+
 /** Removes the pallet from wherever it currently sits (its `loc` is left unchanged). */
 export function detachPallet(w: World, p: Pallet): void {
   const l = p.loc;
@@ -25,7 +34,7 @@ export function detachPallet(w: World, p: Pallet): void {
     if (r && r.slots[l.slot] === p.id) r.slots[l.slot] = null;
   } else if (l.kind === 'staging' || l.kind === 'floor') {
     delete w.cellPallets[cellKey(l.cell)];
-    if (l.kind === 'floor') rebuildGrid(w);
+    if (l.kind === 'floor') setFloorFlag(w, l.cell, false);
   } else {
     const f = w.forklifts[l.forkliftId];
     if (f && f.carrying === p.id) f.carrying = null;
@@ -39,7 +48,7 @@ export function attachPallet(w: World, p: Pallet, loc: PalletLoc): void {
   else if (loc.kind === 'rack') w.racks[loc.rackId].slots[loc.slot] = p.id;
   else if (loc.kind === 'staging' || loc.kind === 'floor') {
     w.cellPallets[cellKey(loc.cell)] = p.id;
-    if (loc.kind === 'floor') rebuildGrid(w);
+    if (loc.kind === 'floor') setFloorFlag(w, loc.cell, true);
   } else w.forklifts[loc.forkliftId].carrying = p.id;
 }
 
@@ -77,10 +86,18 @@ export function isFreeStaging(w: World, c: Vec2): boolean {
   return !!w.staging[k] && !w.cellPallets[k] && !w.reservations[`c:${k}`];
 }
 
+const DOOR_CLEAR_ZONE = 2;
+const NEIGHBORS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+const same = (a: Vec2, b: Vec2) => a.x === b.x && a.y === b.y;
+
 export function isFreeFloor(w: World, c: Vec2): boolean {
   if (!isInterior(w, c.x, c.y)) return false;
   if (flagsAt(w, c.x, c.y) & (F_RACK | F_STAGING | F_FLOOR_PALLET | F_DOOR)) return false;
-  if (isDoorInward(w, c)) return false;
+  // Keep a clear zone around each doorway so overflow pallets never wall it off.
+  if (Object.values(w.doors).some((d) => manhattan(doorInward(d), c) <= DOOR_CLEAR_ZONE)) return false;
+  if (Object.values(w.forklifts).some((f) => f.state !== 'parked' && same(cellOf(f.pos), c))) return false;
+  // A pallet beside a rack can seal off the rack's only access cell.
+  if (NEIGHBORS.some(([dx, dy]) => flagsAt(w, c.x + dx, c.y + dy) & F_RACK)) return false;
   return !w.reservations[`c:${cellKey(c)}`];
 }
 
