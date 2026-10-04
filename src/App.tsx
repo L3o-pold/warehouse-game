@@ -1,6 +1,7 @@
 import { useGame } from './game/store';
 import { useHotkeys } from './input/hotkeys';
 import { BuildGhost } from './render/BuildGhost';
+import { Effects } from './render/Effects';
 import { Entities } from './render/Entities';
 import { GroundInteraction } from './render/GroundInteraction';
 import { Scene } from './render/Scene';
@@ -23,13 +24,14 @@ export default function App() {
   useHotkeys();
   if (screen === 'menu') return <MainMenu />;
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full overflow-hidden">
       <Scene key={seed}>
         <Entities />
         <GroundInteraction />
         <BuildGhost />
+        <Effects />
       </Scene>
-      <div className="pointer-events-none absolute inset-0">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <TopBar />
         <KpiCards />
         <Checklist />

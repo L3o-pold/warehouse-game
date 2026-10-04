@@ -16,6 +16,15 @@ export function rectFrom(a: Vec2, b: Vec2): Rect {
 const verdict = (cells: Vec2[], r: { ok: true; cost: number } | { ok: false; reason: string }): Ghost =>
   r.ok ? { cells, ok: true, cost: r.cost, label: fmtMoney(r.cost) } : { cells, ok: false, cost: 0, label: r.reason };
 
+/** Door placement snaps to the nearest valid wall cell within one cell, since walls are thin targets. */
+export function snapCell(w: World, tool: Tool, cell: Vec2): Vec2 {
+  if (tool.kind !== 'door' || validateDoor(w, cell).ok) return cell;
+  const around: Vec2[] = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) around.push({ x: cell.x + dx, y: cell.y + dy });
+  around.sort((a, b) => Math.abs(a.x - cell.x) + Math.abs(a.y - cell.y) - (Math.abs(b.x - cell.x) + Math.abs(b.y - cell.y)));
+  return around.find((c) => validateDoor(w, c).ok) ?? cell;
+}
+
 export function previewTool(w: World, tool: Tool, hover: Vec2, dragStart: Vec2 | null): Ghost {
   switch (tool.kind) {
     case 'footprint': {
@@ -26,8 +35,10 @@ export function previewTool(w: World, tool: Tool, hover: Vec2, dragStart: Vec2 |
       const c = validateFootprint(w, r);
       return c.ok ? { cells, ok: true, cost: c.cost, label: `${r.w}×${r.h} · ${fmtMoney(c.cost)}` } : { cells, ok: false, cost: 0, label: c.reason };
     }
-    case 'door':
-      return verdict([hover], validateDoor(w, hover));
+    case 'door': {
+      const c = snapCell(w, tool, hover);
+      return verdict([c], validateDoor(w, c));
+    }
     case 'rack':
       return verdict(rackCells(hover, tool.orient), validateRack(w, hover, tool.orient));
     case 'staging':

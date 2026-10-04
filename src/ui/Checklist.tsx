@@ -9,7 +9,7 @@ export function Checklist() {
   if (!items || items.every((i) => i.done)) return null;
   const done = items.filter((i) => i.done).length;
   return (
-    <Panel className="absolute left-4 top-[200px] w-72 p-3">
+    <Panel className="absolute left-4 top-24 w-72 p-3 2xl:top-[200px]">
       <button type="button" onClick={toggle} className="flex w-full items-center justify-between text-sm font-bold">
         <span>{`Getting started · ${done}/${items.length}`}</span>
         <Icon name="chevron" className={`h-4 w-4 transition ${open ? 'rotate-90' : ''}`} />

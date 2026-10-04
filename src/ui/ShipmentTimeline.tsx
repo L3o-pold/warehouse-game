@@ -31,7 +31,7 @@ export function ShipmentTimeline() {
     hud.trucks[0];
   if (!focus) {
     return (
-      <Panel className="absolute bottom-4 left-4 w-[560px] px-5 py-4">
+      <Panel className="absolute bottom-4 left-4 hidden w-[560px] px-5 py-4 xl:block">
         <div className="flex items-center gap-2 font-bold">
           <Icon name="truck" className="h-5 w-5 text-blue-600" /> Shipment Tracking
         </div>
@@ -46,7 +46,7 @@ export function ShipmentTimeline() {
       : ['Scheduled', 'Arrived', 'Docked', `Loading ${focus.done}/${focus.total}`, 'Departed'];
   const idx = stepIndex(focus);
   return (
-    <Panel className="absolute bottom-4 left-4 flex w-[760px] items-stretch gap-4 px-5 py-4">
+    <Panel className="absolute bottom-4 left-4 hidden w-[760px] items-stretch gap-4 px-5 py-4 xl:flex">
       <div className="flex-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold">

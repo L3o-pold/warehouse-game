@@ -2,7 +2,7 @@ import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useGame } from '../game/store';
-import { rectFrom, toolCommand } from '../input/buildMode';
+import { rectFrom, snapCell, toolCommand } from '../input/buildMode';
 import { inputState } from '../input/inputState';
 import { LOT_H, LOT_W, ROAD_ROWS } from '../sim/balance';
 import { cellKey, type Vec2 } from '../sim/world';
@@ -78,7 +78,7 @@ export function GroundInteraction() {
       painting.current = '';
       paint(c);
     } else {
-      const cmd = toolCommand(t, c);
+      const cmd = toolCommand(t, s.world ? snapCell(s.world, t, c) : c);
       if (cmd) s.dispatch(cmd);
     }
   };

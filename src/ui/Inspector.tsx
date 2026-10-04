@@ -307,5 +307,8 @@ export function Inspector() {
   else if (sel.kind === 'rack') body = <RackCard id={sel.id} />;
   else if (sel.kind === 'pallet') body = <PalletCard id={sel.id} />;
   else body = <ContractCard id={sel.id} />;
-  return <Panel className="absolute right-4 top-24 max-h-[calc(100vh-380px)] w-[360px] overflow-y-auto p-4">{body}</Panel>;
+  // On narrow screens only show the inspector for an actual selection, so the yard stays visible.
+  return (
+    <Panel className={`absolute right-4 top-24 max-h-[calc(100vh-380px)] w-[360px] overflow-y-auto p-4 ${sel ? '' : 'hidden lg:block'}`}>{body}</Panel>
+  );
 }

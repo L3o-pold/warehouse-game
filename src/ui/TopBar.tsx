@@ -43,7 +43,7 @@ export function TopBar() {
           <div className="text-[10px] font-bold tracking-[0.25em] text-slate-400">TYCOON</div>
         </div>
       </Panel>
-      <Panel className="flex items-center gap-3 px-3 py-2">
+      <Panel className="hidden items-center gap-3 whitespace-nowrap px-3 py-2 lg:flex">
         <span className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-bold text-white">WH-01</span>
         <div className="leading-tight">
           <div className="text-sm font-semibold">First Lot</div>
@@ -54,7 +54,7 @@ export function TopBar() {
       </Panel>
       <div className="flex-1" />
       {hud.mode === 'scenario' && (
-        <Panel className="w-56 px-3 py-2">
+        <Panel className="hidden w-56 whitespace-nowrap px-3 py-2 xl:block">
           <div className="flex justify-between text-xs text-slate-500">
             <span>Goal · Day 7</span>
             <span className="tabular-nums">{money(hud.netWorth)} / $250k</span>
@@ -72,7 +72,7 @@ export function TopBar() {
         <div className="text-xs text-slate-500">Cash</div>
         <div className={`text-lg font-bold tabular-nums ${hud.cash < 0 ? 'text-red-600' : 'text-slate-900'}`}>{money(hud.cash)}</div>
       </Panel>
-      <Panel className="px-3 py-2">
+      <Panel className="hidden px-3 py-2 md:block">
         <div className="text-xs text-slate-500">Reputation</div>
         <div className="mt-1">
           <Stars value={hud.reputation} />
@@ -80,7 +80,7 @@ export function TopBar() {
       </Panel>
       <Panel className="flex items-center gap-1 px-2 py-1.5">
         <span
-          className={`mr-1 flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold tabular-nums ${speed ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}
+          className={`mr-1 flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1 text-sm font-semibold tabular-nums ${speed ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}
         >
           <span className={`h-2 w-2 rounded-full ${speed ? 'animate-pulse bg-emerald-500' : 'bg-slate-400'}`} />
           {hud.clock}

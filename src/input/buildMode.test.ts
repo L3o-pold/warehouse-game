@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld } from '../sim/world';
 import { readyWorld } from '../sim/testUtils';
-import { previewTool, rectFrom, toolCommand } from './buildMode';
+import { previewTool, rectFrom, snapCell, toolCommand } from './buildMode';
 
 describe('buildMode', () => {
   it('normalises drag rectangles in any direction', () => {
@@ -21,7 +21,15 @@ describe('buildMode', () => {
     const rack = previewTool(w, { kind: 'rack', orient: 'v' }, { x: 12, y: 9 }, null);
     expect(rack.cells).toEqual([{ x: 12, y: 9 }, { x: 12, y: 10 }]);
     expect(rack).toMatchObject({ ok: true, label: '$1,500' });
-    expect(previewTool(w, { kind: 'door', doorKind: 'in' }, { x: 10, y: 6 }, null)).toMatchObject({ ok: false, label: 'Doors can’t go on corners' });
+    expect(previewTool(w, { kind: 'door', doorKind: 'in' }, { x: 16, y: 10 }, null)).toMatchObject({ ok: false, label: 'Doors go on a finished warehouse wall' });
+  });
+  it('snaps the door tool to the nearest valid wall cell', () => {
+    const w = readyWorld();
+    // (17,16) is just outside the south wall; (17,14) just inside.
+    expect(snapCell(w, { kind: 'door', doorKind: 'in' }, { x: 17, y: 16 })).toEqual({ x: 17, y: 15 });
+    expect(snapCell(w, { kind: 'door', doorKind: 'in' }, { x: 17, y: 14 })).toEqual({ x: 17, y: 15 });
+    expect(snapCell(w, { kind: 'rack', orient: 'h' }, { x: 17, y: 16 })).toEqual({ x: 17, y: 16 });
+    expect(snapCell(w, { kind: 'door', doorKind: 'in' }, { x: 2, y: 2 })).toEqual({ x: 2, y: 2 });
   });
   it('maps tools to commands', () => {
     expect(toolCommand({ kind: 'door', doorKind: 'out' }, { x: 1, y: 2 })).toEqual({ type: 'placeDoor', cell: { x: 1, y: 2 }, kind: 'out' });

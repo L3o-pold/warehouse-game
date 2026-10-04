@@ -3,14 +3,13 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { LOT_H, LOT_W } from '../sim/balance';
 import { useGame } from '../game/store';
-import { inputState, installInputTracking, isTyping } from '../input/inputState';
+import { edgeDirection, inputState, installInputTracking, isTyping } from '../input/inputState';
 
 const DIST = 60;
 const HEIGHT = 55;
 const ELEV_K = Math.hypot(DIST, HEIGHT) / HEIGHT;
 const HOME = { x: LOT_W / 2, z: LOT_H / 2 + 2, yaw: Math.PI / 4, zoom: 20 };
 const KEY_PAN_PX_PER_S = 700;
-const EDGE = 14;
 
 type RigState = { tx: number; tz: number; yaw: number; yawGoal: number; zoom: number; zoomGoal: number };
 
@@ -112,13 +111,9 @@ export function CameraRig() {
     if (k.has('w') || k.has('arrowup')) u += step;
     if (k.has('s') || k.has('arrowdown')) u -= step;
     if (inputState.inside && document.hasFocus()) {
-      const rect = gl.domElement.getBoundingClientRect();
-      const mx = inputState.mouseX - rect.left;
-      const my = inputState.mouseY - rect.top;
-      if (mx < EDGE) r -= step;
-      else if (mx > rect.width - EDGE) r += step;
-      if (my < EDGE) u += step;
-      else if (my > rect.height - EDGE) u -= step;
+      const edge = edgeDirection(inputState.mouseX, inputState.mouseY, gl.domElement.getBoundingClientRect());
+      r += edge.r * step;
+      u += edge.u * step;
     }
     if (r || u) panBy(s, r, u);
     const t = 1 - Math.exp(-dt * 10);

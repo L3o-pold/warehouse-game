@@ -11,7 +11,7 @@ export function KpiCards() {
     { icon: 'clock', label: 'On-time delivery', value: `${hud.onTimePct}%`, sub: `${hud.stats.onTime + hud.stats.late + hud.stats.failed} contracts · WH-01` },
   ];
   return (
-    <div className="pointer-events-none absolute left-4 top-24 flex gap-3">
+    <div className="pointer-events-none absolute left-4 top-24 hidden gap-3 2xl:flex">
       {cards.map((c) => (
         <Panel key={c.label} className="flex w-52 items-center gap-3 px-4 py-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
